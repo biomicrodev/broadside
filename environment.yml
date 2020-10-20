@@ -1,0 +1,14 @@
+name: broadside
+channels:
+  - conda-forge
+  - default
+dependencies:
+  - black
+  - dask
+  - napari[pyside2]
+  - numpy
+  - pyinstaller
+  - pyqtgraph
+  - pyside2
+  - pytest
+  - scikit-image
