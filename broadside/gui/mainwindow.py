@@ -8,6 +8,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent=None)
 
         viewer = ViewerModel()
+        viewer.theme = "light"
         qtViewer = QtViewer(viewer)
 
         self.setCentralWidget(qtViewer)

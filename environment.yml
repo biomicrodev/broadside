@@ -1,13 +1,13 @@
 name: broadside
 channels:
   - conda-forge
-  - default
 dependencies:
   - black
   - dask
-  - napari[pyside2]
+  - napari
   - numpy
   - pyinstaller
   - pyside2
   - pytest
+  - python
   - scikit-image

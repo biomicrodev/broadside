@@ -34,3 +34,7 @@ conda deactivate
 ## Git
 
 [See here](https://gist.github.com/c0ldlimit/4089101) for adding existing projects to github.
+
+## Packaging
+
+Execute `bin/build.sh`.
