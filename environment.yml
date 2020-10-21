@@ -8,7 +8,6 @@ dependencies:
   - napari[pyside2]
   - numpy
   - pyinstaller
-  - pyqtgraph
   - pyside2
   - pytest
   - scikit-image

@@ -14,13 +14,13 @@ conda update --name base --channel defaults conda
 To initialize the conda environment:
 
 ```bash
-conda env create --file environment.yml
+conda env create [--file=environment.yml]
 ```
 
-To update the conda environment:
+To update the conda environment, set `conda-update.sh` to be executable and then
 
 ```bash
-conda env update --file environment.yml --prune
+bin/conda-update.sh
 ```
 
 Activate and de-activate accordingly:
@@ -33,4 +33,4 @@ conda deactivate
 
 ## Git
 
-[See here](https://docs.github.com/en/free-pro-team@latest/github/importing-your-projects-to-github/adding-an-existing-project-to-github-using-the-command-line) for adding existing projects to github.
+[See here](https://gist.github.com/c0ldlimit/4089101) for adding existing projects to github.
