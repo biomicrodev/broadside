@@ -38,3 +38,7 @@ conda deactivate
 ## Packaging
 
 Execute `bin/build.sh`.
+
+## Testing
+
+Execute `pytest` in the project directory.

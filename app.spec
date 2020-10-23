@@ -17,8 +17,8 @@ import vispy.glsl
 if "CONDA_PREFIX" not in environ:
     raise RuntimeError(
         """\
-CONDA_PREFIX environment variable not found! You probably need to activate the conda 
-environment first.
+CONDA_PREFIX environment variable not found! The conda environment needs to be 
+activated first.
 """
     )
 
