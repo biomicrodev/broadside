@@ -194,11 +194,9 @@ class ProjectModel:
             pass
 
         elif action == SaveAction.Save:
-            self._save()
+            self.save()
             self._set_path(new_path)
             self._read()
-
-            self.pending_save = False
 
         elif action == SaveAction.Discard:
             # do not save here
@@ -224,7 +222,7 @@ class ProjectModel:
         self.image_groups = settings.get("image_groups", [])
         self.task_graph = settings.get("task_graph", {})
 
-    def _save(self) -> None:
+    def save(self) -> None:
         settings = {
             "name": self.name,
             "description": self.description,
@@ -237,6 +235,8 @@ class ProjectModel:
         filepath = os.path.join(self.path, self._filename)
         with open(filepath, "w+") as file:
             json.dump(settings, file, indent=2)
+
+        self.pending_save = False
 
     @property
     def state(self) -> Dict[str, Any]:

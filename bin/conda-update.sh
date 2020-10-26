@@ -2,6 +2,9 @@
 
 set -o errexit
 
+echo "Updating conda environment ..."
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate broadside
 conda env update --file=environment.yml --prune
 
 <<COMMENT
@@ -10,4 +13,7 @@ conda env update --file=environment.yml --prune
   desired backend specified.
 COMMENT
 
+echo "Uninstalling pyqt5"
 pip uninstall --yes pyqt5 pyqt5-sip
+
+conda deactivate

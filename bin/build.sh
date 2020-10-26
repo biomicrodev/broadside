@@ -6,7 +6,6 @@ PROJECTPATH=$(realpath "$(dirname "$(realpath $0)")/../")
 
 # enter conda env
 source "$(conda info --base)/etc/profile.d/conda.sh"
-
 conda activate broadside
 
 pyinstaller \

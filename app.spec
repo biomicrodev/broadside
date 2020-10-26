@@ -7,13 +7,21 @@ See https://github.com/ssec/sift/blob/master/sift.spec for an example
 Seems like napari has to be specified in data_files because there are non-python
 resources scattered about in the module, and adding it to hidden_imports isn't enough.
 """
-
+import sys
 from os import environ
-from os.path import join, dirname
+from os.path import join, dirname, abspath
 
 import napari
 import vispy.glsl
 
+# local resources
+base_path = getattr(sys, "_MEIPASS", join(dirname(abspath(".")), "broadside"))
+
+local_datas = [
+    (join(base_path, "broadside", "gui", "styles"), join("broadside", "gui", "styles"))
+]
+
+# external resources
 if "CONDA_PREFIX" not in environ:
     raise RuntimeError(
         """\
@@ -22,27 +30,29 @@ activated first.
 """
     )
 
-
 binaries = [(join(environ["CONDA_PREFIX"], "lib", "libfontconfig.so"), "lib")]
 
 hidden_imports = ["vispy.app.backends._pyside2"]
 
-data_files = [
+excludes = ["tkinter"]
+
+external_datas = [
     (dirname(vispy.glsl.__file__), join("vispy", "glsl")),
     (dirname(napari.__file__), "napari"),
 ]
 
+# set up pyinstaller
 block_cipher = None
 
 a = Analysis(
     ["bin/run.py"],
     pathex=["../broadside"],
     binaries=binaries,
-    datas=data_files,
+    datas=local_datas + external_datas,
     hiddenimports=hidden_imports,
     hookspath=[],
     runtime_hooks=[],
-    excludes=["tkinter"],
+    excludes=excludes,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
