@@ -10,7 +10,7 @@ def profile(msg: str = None, *, output: Callable = print) -> Callable:
 
     Usage
     -----
-    @profile()
+    @profile()  # not sure how to use the decorator without parentheses in a nice way
     def my_function():
         ...
 

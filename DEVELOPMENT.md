@@ -5,31 +5,12 @@ We use conda for managing python versions and dependencies. Install miniconda [f
 
 ## Conda
 
-To update conda itself:
-
-```bash
-conda update --name base --channel defaults conda
-```
-
-To initialize the conda environment:
-
-```bash
-conda env create [--file=environment.yml]
-```
-
-To update the conda environment, set `conda-update.sh` to be executable and then
-
-```bash
-bin/conda-update.sh
-```
-
-Activate and de-activate accordingly:
-
-```bash
-conda activate broadside
-...
-conda deactivate
-```
+| Action                        | Command                                             |
+| ----------------------------- | --------------------------------------------------- |
+| update conda                  | `conda update --name base --channel defaults conda` |
+| init conda env                | `conda env create [--file=environment.yml]`         |
+| update conda env              | `bin/conda-update.sh`                               |
+| activate/deactivate conda env | `conda activate broadside; ...; conda deactivate`   |
 
 ## Git
 

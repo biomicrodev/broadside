@@ -7,9 +7,8 @@ def test_sequence_model():
     """Test instantiating sequence model."""
     model = SequenceModel(labels)
 
-    assert model.index == 0
-    assert model.first is True
-    assert model.last is False
+    expected_state = {"index": 0, "label": "Step 1", "first": True, "last": False}
+    assert model.state == expected_state
 
 
 def test_sequence_model_step_next():
@@ -17,10 +16,8 @@ def test_sequence_model_step_next():
     model = SequenceModel(labels)
     model.move_next()
 
-    assert model.index == 1
-    assert model.first is False
-    assert model.last is False
-    assert model.label == "Step 2"
+    expected_state = {"index": 1, "label": "Step 2", "first": False, "last": False}
+    assert model.state == expected_state
 
 
 def test_sequence_model_step_back():
@@ -29,10 +26,8 @@ def test_sequence_model_step_back():
     model.index = 1
     model.move_back()
 
-    assert model.index == 0
-    assert model.first is True
-    assert model.last is False
-    assert model.label == "Step 1"
+    expected_state = {"index": 0, "label": "Step 1", "first": True, "last": False}
+    assert model.state == expected_state
 
 
 def test_sequence_model_steps_forward_multiple():
@@ -41,10 +36,8 @@ def test_sequence_model_steps_forward_multiple():
     for _ in range(10):
         model.move_next()
 
-    assert model.index == 3
-    assert model.first is False
-    assert model.last is True
-    assert model.label == "Step 4"
+    expected_state = {"index": 3, "label": "Step 4", "first": False, "last": True}
+    assert model.state == expected_state
 
 
 def test_sequence_model_steps_backward_multiple():
@@ -54,7 +47,5 @@ def test_sequence_model_steps_backward_multiple():
     for _ in range(10):
         model.move_back()
 
-    assert model.index == 0
-    assert model.first is True
-    assert model.last is False
-    assert model.label == "Step 1"
+    expected_state = {"index": 0, "label": "Step 1", "first": True, "last": False}
+    assert model.state == expected_state

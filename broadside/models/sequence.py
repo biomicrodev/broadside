@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Union
 
 
 class SequenceModel:
@@ -36,7 +36,7 @@ class SequenceModel:
 
     @index.setter
     def index(self, val: int) -> None:
-        # be lenient here
+        # being lenient here
         self._index = min(max(val, 0), len(self.labels) - 1)
 
     @property
@@ -52,3 +52,12 @@ class SequenceModel:
 
     def move_back(self) -> None:
         self.index -= 1
+
+    @property
+    def state(self) -> Dict[str, Union[int, str, bool]]:
+        return {
+            "index": self.index,
+            "label": self.label,
+            "first": self.first,
+            "last": self.last,
+        }
