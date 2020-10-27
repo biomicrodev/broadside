@@ -12,6 +12,7 @@ import sys
 from os import environ
 from os.path import join, dirname, abspath
 
+import PySide2
 import napari
 import vispy.glsl
 
@@ -30,6 +31,10 @@ CONDA_PREFIX environment variable not found! The conda environment needs to be
 activated first.
 """
     )
+
+if platform.system() == "Darwin":
+    qt_plugin_path = join(dirname(PySide2.__file__), "plugins", "platforms")
+    environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = qt_plugin_path
 
 binaries = []
 if platform.system() != "Darwin":
