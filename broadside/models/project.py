@@ -2,7 +2,6 @@ import enum
 import json
 import os
 import pprint
-import warnings
 from typing import List, Dict, Any
 
 from napari.utils.events import EmitterGroup, Event

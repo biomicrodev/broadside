@@ -1,5 +1,7 @@
 from typing import List, Dict, Union
 
+from napari.utils.events import EmitterGroup, Event
+
 
 class SequenceModel:
     """
@@ -26,6 +28,8 @@ class SequenceModel:
         self.labels = labels
         self._index = 0
 
+        self.events = EmitterGroup(source=self, auto_connect=True, index=Event)
+
     @property
     def label(self) -> str:
         return self.labels[self._index]
@@ -37,7 +41,10 @@ class SequenceModel:
     @index.setter
     def index(self, val: int) -> None:
         # being lenient here
-        self._index = min(max(val, 0), len(self.labels) - 1)
+        val = min(max(val, 0), len(self.labels) - 1)
+        if self._index != val:
+            self._index = val
+            self.events.index()
 
     @property
     def first(self) -> bool:

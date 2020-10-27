@@ -8,3 +8,12 @@ class SequenceWidget(QWidget):
         super().__init__(parent=parent)
 
         self.labels = labels
+        self._index = 0
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    @index.setter
+    def index(self, val: int) -> None:
+        self._index = val

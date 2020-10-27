@@ -2,6 +2,7 @@
 
 set -o errexit
 
+# For MacOS, `realpath` needs to be installed using `brew install coreutils`.
 PROJECTPATH=$(realpath "$(dirname "$(realpath $0)")/../")
 
 # enter conda env

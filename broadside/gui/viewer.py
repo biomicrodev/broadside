@@ -1,4 +1,4 @@
-from os.path import dirname, realpath, join
+from os.path import dirname, realpath, join, isfile
 
 from PySide2.QtWidgets import (
     QApplication,
@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__(parent=None)
 
-        self.setWindowStyleSheet("default")
+        self.setStyleSheetFromFile("default")
 
         self.initMenuBar()
 
@@ -28,8 +28,13 @@ class MainWindow(QMainWindow):
         self.setMinimumWidth(500)
         self.setMinimumHeight(500)
 
-    def setWindowStyleSheet(self, style: str) -> None:
-        with open(join(get_styles_path(), f"{style}.qss"), "r") as file:
+    def setStyleSheetFromFile(self, style: str) -> None:
+        filepath = join(get_styles_path(), f"{style}.qss")
+
+        if not isfile(filepath):
+            filepath = join(get_styles_path(), "default.qss")
+
+        with open(filepath, "r") as file:
             self.setStyleSheet(file.read())
 
     def initMenuBar(self) -> None:
