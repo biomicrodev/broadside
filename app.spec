@@ -7,6 +7,7 @@ See https://github.com/ssec/sift/blob/master/sift.spec for an example
 Seems like napari has to be specified in data_files because there are non-python
 resources scattered about in the module, and adding it to hidden_imports isn't enough.
 """
+import platform
 import sys
 from os import environ
 from os.path import join, dirname, abspath
@@ -30,7 +31,9 @@ activated first.
 """
     )
 
-binaries = [(join(environ["CONDA_PREFIX"], "lib", "libfontconfig.so"), "lib")]
+binaries = []
+if platform.system() != "Darwin":
+    binaries += [(join(environ["CONDA_PREFIX"], "lib", "libfontconfig.so"), "lib")]
 
 hidden_imports = ["vispy.app.backends._pyside2"]
 
