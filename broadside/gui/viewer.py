@@ -7,7 +7,9 @@ from PySide2.QtWidgets import (
     QLabel,
 )
 
-from broadside.gui.components.mainwindow import MainWindow
+from broadside.gui.components.MainWindow import MainWindow
+from broadside.gui.components.ProjectWidget import ProjectWidget
+from broadside.models.sequence import SequenceModel
 
 CURRENT_DIR = dirname(realpath(__file__))
 
@@ -19,6 +21,10 @@ def get_styles_path() -> str:
 class Viewer:
     def __init__(self, *, app: QApplication):
         self.window = MainWindow()
+
+        self.sequence = SequenceModel(5)
+        # self.sequence.events.index.connect(lambda event: print(event.index))
+        self.window.setCentralWidget(ProjectWidget(parent=self.window))
 
         self.window.aboutAction.triggered.connect(lambda: self.showAbout())
 

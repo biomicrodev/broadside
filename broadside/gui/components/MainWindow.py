@@ -4,9 +4,9 @@ from PySide2.QtWidgets import QMainWindow, QMenu, QAction, QMenuBar
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__(parent=None)
-        self.setWindowTitle("Broadside")
         self.createMenuBar()
 
+        self.setWindowTitle("Broadside")
         self.setMinimumHeight(500)
         self.setMinimumWidth(600)
         self.resize(1200, 800)  # w, h
@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
 
         self.saveAction = QAction()
         self.saveAction.setText("&Save")
+        self.saveAction.setShortcut("Ctrl+S")
 
         self.aboutAction = QAction()
         self.aboutAction.setText("About")
@@ -25,11 +26,9 @@ class MainWindow(QMainWindow):
         # set up menu bar
         menuBar: QMenuBar = self.menuBar()
 
-        fileMenu = menuBar.addMenu("&File")
-        fileMenu.setTitle("&File")
+        fileMenu: QMenu = menuBar.addMenu("&File")
         fileMenu.addAction(self.openAction)
         fileMenu.addAction(self.saveAction)
 
-        helpMenu = menuBar.addMenu("&Help")
-        helpMenu.setTitle("&Help")
+        helpMenu: QMenu = menuBar.addMenu("&Help")
         helpMenu.addAction(self.aboutAction)

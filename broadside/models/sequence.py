@@ -1,4 +1,4 @@
-from typing import List, Dict, Union
+from typing import Dict, Union
 
 from napari.utils.events import EmitterGroup, Event
 
@@ -9,13 +9,11 @@ class SequenceModel:
 
     Parameters
     ----------
-    labels: List[str]
-        Step names
+    n: int
+        Number of steps
 
     Attributes
     ----------
-    label: str
-        Label corresponding to current index
     index: int
         Current index
     first: bool
@@ -24,15 +22,11 @@ class SequenceModel:
         At the end of the sequence
     """
 
-    def __init__(self, labels: List[str]):
-        self.labels = labels
+    def __init__(self, n: int):
+        self._n = n
         self._index = 0
 
         self.events = EmitterGroup(source=self, auto_connect=True, index=Event)
-
-    @property
-    def label(self) -> str:
-        return self.labels[self._index]
 
     @property
     def index(self) -> int:
@@ -41,10 +35,10 @@ class SequenceModel:
     @index.setter
     def index(self, val: int) -> None:
         # being lenient here
-        val = min(max(val, 0), len(self.labels) - 1)
+        val = min(max(val, 0), self._n - 1)
         if self._index != val:
             self._index = val
-            self.events.index()
+            self.events.index(index=self._index)
 
     @property
     def first(self) -> bool:
@@ -52,7 +46,7 @@ class SequenceModel:
 
     @property
     def last(self) -> bool:
-        return self._index == (len(self.labels) - 1)
+        return self._index == (self._n - 1)
 
     def move_next(self) -> None:
         self.index += 1
@@ -64,7 +58,6 @@ class SequenceModel:
     def state(self) -> Dict[str, Union[int, str, bool]]:
         return {
             "index": self.index,
-            "label": self.label,
             "first": self.first,
             "last": self.last,
         }

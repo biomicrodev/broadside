@@ -7,6 +7,23 @@ QMenuBar {
     spacing: 0px;
 }
 
+QMenuBar::item {
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 1px solid lightgray;
+    padding: 3px 6px;
+}
+
+QMenuBar::item:pressed {
+    background-color: hsl(0, 0%, 80%);
+}
+
 QMenu::title {
     font: 12pt;
+}
+
+QPushButton#selectProjectButton {
+    padding: 10px 15px;
+    font-size: 18px;
 }
