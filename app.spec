@@ -35,7 +35,7 @@ binaries = []
 if platform.system() != "Darwin":
     binaries += [(join(environ["CONDA_PREFIX"], "lib", "libfontconfig.so"), "lib")]
 
-hidden_imports = ["vispy.app.backends._pyside2"]
+hidden_imports = ["vispy.app.backends._pyside2", "jnius_config"]
 
 excludes = ["tkinter"]
 
@@ -61,7 +61,9 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
 exe = EXE(
     pyz,
     a.scripts,
