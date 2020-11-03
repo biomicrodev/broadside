@@ -4,9 +4,10 @@ channels:
 dependencies:
   - black>=20.7
   - dask>=2.30
-  - napari>=0.3.8
+  - napari>=0.4
   - numpy>=1.19
   - pyinstaller>=4.0
+  - pyjnius>=1.2
   - pyqtgraph>=0.11
   - pyside2>=5.13
   - pytest>=6.1

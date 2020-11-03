@@ -4,7 +4,7 @@ import os
 import pprint
 from typing import List, Dict, Any
 
-from napari.utils.events import EmitterGroup, Event
+from napari.utils.events import Event, EmitterGroup
 
 
 class SaveAction(enum.Enum):
@@ -196,6 +196,8 @@ class ProjectModel:
             self.save()
             self._set_path(new_path)
             self._read()
+
+            self.pending_save = False
 
         elif action == SaveAction.Discard:
             # do not save here

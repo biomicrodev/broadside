@@ -14,6 +14,8 @@ from PySide2.QtWidgets import (
     QLayout,
 )
 
+from broadside.gui.components.devices import DevicesWidget
+
 
 class ProjectWidget(QWidget):
     def __init__(self, parent: QWidget):
@@ -36,7 +38,7 @@ class ProjectWidget(QWidget):
         selectProjectButton.setText("Select project")
 
         pathLabel = QLabel()
-        pathLabel.setText("Path")
+        pathLabel.setText("Path:")
         pathLabel.setToolTip("Project path")
         pathLabel.setWordWrap(False)
         pathLabel.setAlignment(Qt.AlignRight)
@@ -47,7 +49,7 @@ class ProjectWidget(QWidget):
         pathValueLabel.setWordWrap(False)
 
         nameLabel = QLabel()
-        nameLabel.setText("Name")
+        nameLabel.setText("Name:")
         nameLabel.setToolTip("Project name")
         nameLabel.setWordWrap(False)
         nameLabel.setAlignment(Qt.AlignRight)
@@ -99,12 +101,15 @@ class ProjectWidget(QWidget):
         imageGroupsWidget = QWidget()
         # imageGroupsWidget.setLayout()
 
+        devicesWidget = DevicesWidget()
+
         settingsWidget = QTabWidget()
         settingsWidget.setObjectName("settingsWidget")
         settingsWidget.setTabPosition(QTabWidget.North)
         settingsWidget.addTab(blocksWidget, "Blocks")
         settingsWidget.addTab(panelsWidget, "Panels")
         settingsWidget.addTab(imageGroupsWidget, "Image Groups")
+        settingsWidget.addTab(devicesWidget, "Devices")
 
         settingsTabBar: QTabBar = settingsWidget.tabBar()
         settingsTabBar.setObjectName("settingsTabBar")

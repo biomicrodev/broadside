@@ -1,4 +1,4 @@
-from os.path import dirname, realpath, join, isfile
+from pathlib import Path
 
 from PySide2.QtWidgets import (
     QApplication,
@@ -7,15 +7,15 @@ from PySide2.QtWidgets import (
     QLabel,
 )
 
-from broadside.gui.components.MainWindow import MainWindow
-from broadside.gui.components.ProjectWidget import ProjectWidget
+from broadside.gui.components.mainwindow import MainWindow
+from broadside.gui.components.project import ProjectWidget
 from broadside.models.sequence import SequenceModel
 
-CURRENT_DIR = dirname(realpath(__file__))
+CURRENT_DIR = Path(__file__).parent.resolve()
 
 
-def get_styles_path() -> str:
-    return join(CURRENT_DIR, "styles")
+def get_styles_path() -> Path:
+    return CURRENT_DIR / "styles"
 
 
 class Viewer:
@@ -49,12 +49,12 @@ class Viewer:
         dialog.exec_()
 
     def setStyleSheet(self, style: str = "default") -> None:
-        filepath = join(get_styles_path(), f"{style}.qss")
+        filepath = get_styles_path() / f"{style}.qss"
 
-        if not isfile(filepath):
-            filepath = join(get_styles_path(), "default.qss")
+        if not filepath.is_file():
+            filepath = get_styles_path() / "default.qss"
 
-        with open(filepath, "r") as file:
+        with open(str(filepath), "r") as file:
             self.window.setStyleSheet(file.read())
 
     def show(self):

@@ -1,4 +1,4 @@
-from PySide2.QtWidgets import QMainWindow, QMenu, QAction, QMenuBar
+from PySide2.QtWidgets import QMainWindow, QAction, QMenuBar, QMenu
 
 
 class MainWindow(QMainWindow):
