@@ -11,6 +11,7 @@ We use conda for managing python versions and dependencies. Install miniconda [f
 | init conda env                | `conda env create [--file=environment.yml]`         |
 | update conda env              | `bin/conda-update.sh`                               |
 | activate/deactivate conda env | `conda activate broadside; ...; conda deactivate`   |
+| download bioformats           | `bin/download-bioformats.py`                        |
 
 ## Git
 
