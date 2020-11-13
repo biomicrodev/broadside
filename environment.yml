@@ -13,4 +13,4 @@ dependencies:
   - pytest>=6.1
   - python>=3.8
   - scikit-image>=0.17
-  - tqdm>=4.38
+  - tqdm>=4.51

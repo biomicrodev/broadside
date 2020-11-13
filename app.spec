@@ -3,6 +3,8 @@
 """
 See https://pyinstaller.readthedocs.io/en/stable/spec-files.html for details
 See https://github.com/ssec/sift/blob/master/sift.spec for an example
+See https://stackoverflow.com/questions/24049391/how-to-bundle-jar-files-with-pyinstaller for jars
+
 
 Seems like napari has to be specified in data_files because there are non-python
 resources scattered about in the module, and adding it to hidden_imports isn't enough.

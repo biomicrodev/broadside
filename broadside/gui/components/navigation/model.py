@@ -1,9 +1,9 @@
-from typing import Dict, Union
+from typing import Dict, Any
 
-from napari.utils.events import EmitterGroup, Event
+from PySide2.QtCore import Signal, QObject
 
 
-class SequenceModel:
+class NavigationModel(QObject):
     """
     Maneuvering along a sequence of steps.
 
@@ -22,11 +22,14 @@ class SequenceModel:
         At the end of the sequence
     """
 
-    def __init__(self, n: int):
+    # model to view
+    indexChanged = Signal()
+
+    def __init__(self, n: int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         self._n = n
         self._index = 0
-
-        self.events = EmitterGroup(source=self, auto_connect=True, index=Event)
 
     @property
     def index(self) -> int:
@@ -34,19 +37,19 @@ class SequenceModel:
 
     @index.setter
     def index(self, val: int) -> None:
-        # being lenient here
-        val = min(max(val, 0), self._n - 1)
+        val = min(max(val, 0), self._n - 1)  # being lenient here
+
         if self._index != val:
             self._index = val
-            self.events.index(index=self._index)
+            self.indexChanged.emit()
 
     @property
     def first(self) -> bool:
-        return self._index == 0
+        return self.index == 0
 
     @property
     def last(self) -> bool:
-        return self._index == (self._n - 1)
+        return self.index == (self._n - 1)
 
     def move_next(self) -> None:
         self.index += 1
@@ -55,9 +58,12 @@ class SequenceModel:
         self.index -= 1
 
     @property
-    def state(self) -> Dict[str, Union[int, str, bool]]:
+    def state(self) -> Dict[str, Any]:
         return {
             "index": self.index,
             "first": self.first,
             "last": self.last,
         }
+
+    def __str__(self) -> str:
+        return str(self.state)

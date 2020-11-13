@@ -13,14 +13,13 @@ LOCI_TOOLS_URL = f"https://downloads.openmicroscopy.org/bio-formats/{LOCI_TOOLS_
 LOCI_TOOLS_SHA1 = "bdf1a37b561fea02fd8d1c747bd34db3fc49667b"
 
 
-class DownloadProgressBar(tqdm):
-    def update_to(self, b=1, bsize=1, tsize=None) -> None:
-        if tsize is not None:
-            self.total = tsize
-        self.update(b * bsize - self.n)
-
-
 def download(url: str, output_path: str) -> None:
+    class DownloadProgressBar(tqdm):
+        def update_to(self, b=1, bsize=1, tsize=None) -> None:
+            if tsize is not None:
+                self.total = tsize
+            self.update(b * bsize - self.n)
+
     with DownloadProgressBar(
         unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1], file=sys.stdout
     ) as progress_bar:
