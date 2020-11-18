@@ -7,10 +7,10 @@ dependencies:
   - napari>=0.4
   - numpy>=1.19
   - pyinstaller>=4.0
-  - pyjnius>=1.2
   - pyqtgraph>=0.11
   - pyside2>=5.13
   - pytest>=6.1
   - python>=3.8
   - scikit-image>=0.17
+  - tifffile>=2020.10
   - tqdm>=4.51
