@@ -1,19 +1,27 @@
 import json
-import pprint
+import logging
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 from PySide2.QtCore import QObject, Signal
 
-from broadside.gui.models import QStaleableObject
-from broadside.gui.models.device import Device
+from . import QStaleableObject
+from .device import Device
 
 
 class SaveAction(Enum):
     Save = "SAVE"
     Cancel = "CANCEL"
     Discard = "DISCARD"
+
+
+class Block:
+    pass
+
+
+class Image:
+    pass
 
 
 class ProjectModel(QStaleableObject):
@@ -46,11 +54,13 @@ class ProjectModel(QStaleableObject):
 
     """
 
+    log = logging.getLogger(__name__)
+
     filename = "project.json"
 
     # model to view
     askSave = Signal(Path)
-    askTitleUpdate = Signal()
+    projectChanged = Signal()
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent=parent)
@@ -58,12 +68,19 @@ class ProjectModel(QStaleableObject):
         self._path: Optional[Path] = None
         self._name = ""
         self._description = ""
-        self._panels: List[Panel] = []
+        self._blocks: List[Block] = []
         self._devices: List[Device] = []
-        self._imageGroups: List[ImageGroup] = []
+        self._images: List[Image] = []
         self._taskGraph = {}
 
-        self.isStaleChanged.connect(self.askTitleUpdate.emit)
+        self._logEvents()
+
+    def _logEvents(self):
+        self.askSave.connect(lambda: self.log.info("askSave emitted"))
+        self.projectChanged.connect(
+            lambda: self.log.info(f"projectChanged to {self._path}")
+        )
+        self.isStaleChanged.connect(lambda: self.log.info("isStale emitted"))
 
     @property
     def path(self) -> Path:
@@ -71,23 +88,27 @@ class ProjectModel(QStaleableObject):
 
     @path.setter
     def path(self, val: Optional[Path]) -> None:
-        if not val:
-            print("Project setter called with empty path; path not changed")
+        if not val or str(val) == "":
+            self.log.info("Project setter called with empty path; path not changed")
             return
 
         if self.path is None:
-            # no currently active project
+            # no currently active project, so just set path
             self._setPath(val)
+            self._read()
 
         elif self.path == val:
-            # no change in project
-            print("No change in path")
+            self.log.info("No change in path")
 
         elif not val.is_dir():
-            print(f"{str(self.path)} not a directory! Path not changed")
+            self.log.warning(f"{str(self.path)} not a directory! Path not changed")
+
+        elif self.isStale:
+            self.askSave.emit(val)
 
         else:
-            self.askSave.emit(val)
+            self._setPath(val)
+            self._read()
 
     def _setPath(self, val: Path) -> None:
         """
@@ -96,6 +117,8 @@ class ProjectModel(QStaleableObject):
         """
         self._path = val
         self._name = val.name
+
+        self.projectChanged.emit()
 
     @property
     def name(self) -> str:
@@ -111,20 +134,29 @@ class ProjectModel(QStaleableObject):
         self.isStale = True
 
     @property
-    def panels(self) -> List[Panel]:
-        return self._panels
+    def blocks(self) -> List[Block]:
+        return self._blocks
 
-    @panels.setter
-    def panels(self, val: List[Panel]) -> None:
-        if self.panels != val:
-            self._panels = val
-            self.isStale = True
+    @blocks.setter
+    def blocks(self, val: List[Block]) -> None:
+        self._blocks = val
+        # TODO: is this the right way? probably not.
+
+    @property
+    def devices(self) -> List[Device]:
+        return self._devices
+
+    @devices.setter
+    def devices(self, val: List[Device]) -> None:
+        self._devices = val
 
     def onSaveResponse(self, *, newPath: Path, action: SaveAction) -> None:
         if action == SaveAction.Cancel:
+            self.log.info("Project settings save cancelled")
             pass
 
         elif action == SaveAction.Save:
+            self.log.info("Project settings saved")
             self.save()
             self._setPath(newPath)
             self._read()
@@ -132,6 +164,7 @@ class ProjectModel(QStaleableObject):
             self.isStale = False
 
         elif action == SaveAction.Discard:
+            self.log.info("Project settings discarded")
             # do not save here
             self._setPath(newPath)
             self._read()
@@ -149,9 +182,17 @@ class ProjectModel(QStaleableObject):
             with open(str(filepath), "r") as file:
                 settings = json.load(file)
 
-        self.description = settings.get("description", "")
+            self.log.info(f"Settings read from {str(filepath)}")
+        else:
+            self.log.info("Settings file not found")
+
+        self._description = settings.get("description", "")
 
     def save(self) -> None:
+        if self.path is None:
+            self.log.info("Path is none, so not saving")
+            return
+
         settings = {
             "name": self.name,
             "description": self.description,
@@ -163,6 +204,8 @@ class ProjectModel(QStaleableObject):
 
         self.isStale = False
 
+        self.log.info(f"Settings saved to {str(filepath)}")
+
     def as_dict(self) -> Dict[str, Any]:
         return {
             "path": self.path,
@@ -172,4 +215,4 @@ class ProjectModel(QStaleableObject):
         }
 
     def __str__(self) -> str:
-        return pprint.pformat(self.as_dict, indent=2, sort_dicts=False)
+        return str(self.as_dict())

@@ -50,7 +50,7 @@ external_datas = [
 block_cipher = None
 
 a = Analysis(
-    ["bin/run.py"],
+    ["bin/run.sh"],
     pathex=["../broadside"],
     binaries=binaries,
     datas=local_datas + external_datas,

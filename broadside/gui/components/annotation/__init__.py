@@ -1,6 +1,7 @@
 from PySide2.QtWidgets import QWidget, QVBoxLayout, QLabel
 
-from broadside.gui.components.panel import BasePanel
+from ..panel import BasePanel
+from ...models.project import ProjectModel
 
 
 class AnnotationWidget(QWidget):
@@ -18,7 +19,8 @@ class AnnotationWidget(QWidget):
 class AnnotationPanel(BasePanel):
     name = "Annotation"
 
-    def __init__(self, *args, parent: QWidget = None, **kwargs):
+    def __init__(self, *args, model: ProjectModel, parent: QWidget = None, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.model = model
         self.view = AnnotationWidget(parent=parent)

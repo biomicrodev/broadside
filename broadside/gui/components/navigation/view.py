@@ -11,7 +11,7 @@ from PySide2.QtWidgets import (
     QLabel,
 )
 
-from broadside.gui import Color
+from ...color import Color
 
 
 class StepStatus(Enum):

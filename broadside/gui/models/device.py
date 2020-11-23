@@ -1,42 +1,43 @@
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import Optional, List, Union, Any, Dict
 
-from PySide2.QtCore import QObject, QAbstractListModel
-
-from broadside.gui.models import QStaleableObject
+from broadside.gui.models.formulation import Formulation
 
 
-class DeviceOrientation(Enum):
+class Fiducial(Enum):
+    Notch = "notch"
+
+
+class LongitudinalDirection(Enum):
     TipIntoScreen = "tip into screen/booster out of screen"
     TipOutOfScreen = "tip out of screen/booster into screen"
 
 
-class DeviceDirectionality(Enum):
+class LongitudinalOrdinality(Enum):
+    IncreasingTowardsTip = "levels increasing towards tip"
+    IncreasingTowardsBooster = "levels increasing towards booster"
+
+
+class AngularDirection(Enum):
     Clockwise = "clockwise positive"
     Counterclockwise = "counterclockwise positive"
 
 
-class Payload(QAbstractListModel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-
-class Device(QStaleableObject):
+class Device:
     def __init__(
         self,
         *,
         name: Optional[str] = "",
-        orientation: Optional[DeviceOrientation] = None,
-        directionality: Optional[DeviceDirectionality] = None,
-        payload: Optional[List] = None,
-        fiducial: Optional[str] = "",
-        parent: Optional[QObject] = None
+        longitudinalDirection: Optional[LongitudinalDirection] = None,
+        longitudinalOrdinality: Optional[LongitudinalOrdinality] = None,
+        angularDirection: Optional[AngularDirection] = None,
+        payload: Optional[List[Formulation]] = None,
+        fiducial: Optional[Union[str, Fiducial]] = "",
     ):
-        super().__init__(parent=parent)
-
         self._name = name
-        self._orientation = orientation
-        self._directionality = directionality
+        self._longitudinalDirection = longitudinalDirection
+        self._longitudinalOrdinality = longitudinalOrdinality
+        self._angularDirection = angularDirection
         self._payload = payload or []
         self._fiducial = fiducial
 
@@ -46,39 +47,45 @@ class Device(QStaleableObject):
 
     @name.setter
     def name(self, val: str) -> None:
-        if self.name != val:
-            self._name = val
-            self.isStale = True
+        self._name = val
 
     @property
-    def orientation(self) -> DeviceOrientation:
-        return self._orientation
+    def longitudinalDirection(self) -> Optional[LongitudinalDirection]:
+        return self._longitudinalDirection
 
-    @orientation.setter
-    def orientation(self, val: DeviceOrientation):
-        if self.orientation != val:
-            self._orientation = val
-            self.isStale = True
+    @longitudinalDirection.setter
+    def longitudinalDirection(self, val: LongitudinalDirection) -> None:
+        self._longitudinalDirection = val
 
     @property
-    def directionality(self) -> DeviceDirectionality:
-        return self._directionality
+    def longitudinalOrdinality(self) -> Optional[LongitudinalOrdinality]:
+        return self._longitudinalOrdinality
 
-    @directionality.setter
-    def directionality(self, val: DeviceDirectionality) -> None:
-        if self.directionality != val:
-            self._directionality = val
-            self.isStale = True
+    @longitudinalOrdinality.setter
+    def longitudinalOrdinality(self, val: LongitudinalOrdinality) -> None:
+        self._longitudinalOrdinality = val
+
+    @property
+    def angularDirection(self) -> Optional[AngularDirection]:
+        return self._angularDirection
+
+    @angularDirection.setter
+    def angularDirection(self, val: AngularDirection) -> None:
+        self._angularDirection = val
+
+    @property
+    def payload(self) -> List:
+        return self._payload
+
+    @payload.setter
+    def payload(self, val: List[Formulation]) -> None:
+        self._payload = val
 
     def as_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
-            "orientation": self.orientation,
-            "directionality": self.directionality,
+            "longitudinalDirection": self.longitudinalOrdinality,
+            "longitudinalOrdinality": self.longitudinalOrdinality,
+            "angularDirection": self.angularDirection,
             "payload": self.payload,
-            "fiducial": self.fiducial,
         }
-
-
-if __name__ == "__main__":
-    device = Device()

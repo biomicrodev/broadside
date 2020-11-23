@@ -1,3 +1,7 @@
+* {
+    font-family: 'Ubuntu', sans-serif;
+}
+
 QMenuBar {
     font: 9pt;
     spacing: 0px;
@@ -19,8 +23,8 @@ QMenu::title {
     font: 12pt;
 }
 
-QPushButton#selectProjectButton {
-    padding: 10px 15px;
+QPushButton#SelectProjectButton {
+    padding: 15px 25px;
     font-size: 18px;
 }
 
@@ -36,4 +40,8 @@ QTabBar::close-button:hover {
 
 QTabBar::close-button:pressed {
     background-color: hsl(0, 0%, 80%);
+}
+
+QHLine {
+    color: lightgray;
 }

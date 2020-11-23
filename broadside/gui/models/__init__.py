@@ -15,11 +15,11 @@ class QStaleableObject(QObject):
         self._isStale = False
 
     @property
-    def stale(self) -> bool:
+    def isStale(self) -> bool:
         return self._isStale
 
-    @stale.setter
-    def stale(self, val: bool) -> None:
-        if self.stale is not val:
+    @isStale.setter
+    def isStale(self, val: bool) -> None:
+        if self.isStale is not val:
             self._isStale = val
             self.isStaleChanged.emit()
