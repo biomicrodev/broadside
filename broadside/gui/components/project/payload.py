@@ -21,6 +21,7 @@ from PySide2.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
     QApplication,
+    QHeaderView,
 )
 from natsort import natsort_keygen
 
@@ -30,22 +31,6 @@ from broadside.gui.models.formulation import Formulation
 class CellState(Enum):
     Valid = "VALID"
     Invalid = "INVALID"
-
-
-class DictLike:
-    keys = []
-
-    def __getitem__(self, item):
-        if item not in self.keys:
-            raise KeyError(f"Key {item} not found!")
-
-        return getattr(self, item)
-
-    def __setitem__(self, key, value):
-        if key not in self.keys:
-            raise KeyError(f"Setting key {key} not allowed!")
-
-        setattr(self, key, value)
 
 
 class FormulationTableModel(QAbstractTableModel):
@@ -175,6 +160,8 @@ class PayloadTableView(QTableView):
         super().__init__(*args, **kwargs)
 
         self.setSelectionMode(QAbstractItemView.SingleSelection)
+        horizontalHeader: QHeaderView = self.horizontalHeader()
+        horizontalHeader.setStretchLastSection(True)
 
         delegate = StyledItemDelegate(parent=self)
         self.setItemDelegate(delegate)
@@ -189,9 +176,10 @@ class PayloadWidget(QWidget):
         self.view = PayloadTableView()
         self.view.setModel(self.model)
 
-        self.addFormulationButton = QPushButton()
-        self.addFormulationButton.setText("Add formulation")
-        self.addFormulationButton.clicked.connect(lambda: self.model.addFormulation())
+        addFormulationButton = QPushButton()
+        addFormulationButton.setText("Add formulation")
+        addFormulationButton.clicked.connect(lambda: self.model.addFormulation())
+        self.addFormulationButton = addFormulationButton
 
         def selectionChanged():
             indexes = self.view.selectedIndexes()
@@ -210,18 +198,27 @@ class PayloadWidget(QWidget):
             modelIndex = self.model.createIndex(row, column)
             self.view.setCurrentIndex(modelIndex)
 
-        self.deleteFormulationButton = QPushButton()
-        self.deleteFormulationButton.setText("Delete formulation")
-        self.deleteFormulationButton.setDisabled(True)
-        self.deleteFormulationButton.setStyleSheet(
-            "background-color: rgb(190, 30, 30);"
+        deleteFormulationButton = QPushButton()
+        deleteFormulationButton.setText("Delete formulation")
+        deleteFormulationButton.setObjectName("DeleteFormulationButton")
+        deleteFormulationButton.setDisabled(True)
+        deleteFormulationButton.setStyleSheet(
+            """\
+QPushButton#DeleteFormulationButton {
+    background-color: rgb(190, 30, 30);
+}
+QPushButton#DeleteFormulationButton:enabled {
+    color: white;
+}
+        """
         )
-        self.deleteFormulationButton.clicked.connect(lambda: deleteFormulation())
+        deleteFormulationButton.clicked.connect(lambda: deleteFormulation())
+        self.deleteFormulationButton = deleteFormulationButton
 
         selectionModel: QItemSelectionModel = self.view.selectionModel()
         selectionModel.selectionChanged.connect(lambda: selectionChanged())
 
-        natsort = natsort_keygen(key=lambda a: (a["level"], a["angle"]))
+        natsort = natsort_keygen(key=lambda a: (a.level, a.angle))
 
         def sort():
             self.model.formulations.sort(key=natsort)

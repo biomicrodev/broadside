@@ -12,18 +12,21 @@ from PySide2.QtWidgets import (
     QLineEdit,
     QComboBox,
     QGridLayout,
+    QScrollArea,
+    QAbstractScrollArea,
 )
 
 from broadside.gui.components.project.payload import PayloadWidget
 from broadside.gui.models.device import (
+    LongitudinalOrientation,
     LongitudinalDirection,
     AngularDirection,
     Device,
-    LongitudinalOrdinality,
 )
+from broadside.gui.utils import showDeleteDialog, QStaleableObject
 
 
-class DeviceWidget(QWidget):
+class DeviceWidget(QWidget, QStaleableObject):
     def __init__(
         self, *args, device: Optional[Device] = None, _init_name: str = "", **kwargs
     ):
@@ -33,7 +36,6 @@ class DeviceWidget(QWidget):
         self._init_name = _init_name
 
         self.setUpUI()
-        self.setUpReactivity()
 
     def setUpUI(self):
         nameLabel = QLabel("Name:")
@@ -41,42 +43,42 @@ class DeviceWidget(QWidget):
         nameLabel.setBuddy(nameLabelEdit)
         self.nameLabelEdit = nameLabelEdit
 
+        longOrientLabel = QLabel("Longitudinal orientation:")
+        longOrientComboBox = QComboBox()
+        longOrientComboBox.insertItems(
+            0,
+            [
+                LongitudinalOrientation.TipIntoPage.value,
+                LongitudinalOrientation.TipOutOfPage.value,
+            ],
+        )
+        longOrientLabel.setBuddy(longOrientComboBox)
+        self.longitudinalOrientationComboBox = longOrientComboBox
+
         longDirLabel = QLabel("Longitudinal direction:")
         longDirComboBox = QComboBox()
         longDirComboBox.insertItems(
             0,
             [
-                LongitudinalDirection.TipIntoScreen.value,
-                LongitudinalDirection.TipOutOfScreen.value,
+                LongitudinalDirection.IncreasingTowardsTip.value,
+                LongitudinalDirection.IncreasingTowardsBooster.value,
             ],
         )
         longDirLabel.setBuddy(longDirComboBox)
         self.longitudinalDirectionComboBox = longDirComboBox
 
-        longOrdLabel = QLabel("Longitudinal ordinality:")
-        longOrdComboBox = QComboBox()
-        longOrdComboBox.insertItems(
-            0,
-            [
-                LongitudinalOrdinality.IncreasingTowardsTip.value,
-                LongitudinalOrdinality.IncreasingTowardsBooster.value,
-            ],
-        )
-        longOrdLabel.setBuddy(longOrdComboBox)
-        self.longitudinalOrdinalityComboBox = longOrdComboBox
-
         angDirLabel = QLabel("Angular direction:")
         angDirComboBox = QComboBox()
         angDirComboBox.insertItems(
             0,
-            [AngularDirection.Clockwise.value, AngularDirection.Counterclockwise.value],
+            [AngularDirection.Clockwise.value, AngularDirection.CounterClockwise.value],
         )
         angDirComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         angDirLabel.setBuddy(angDirComboBox)
         self.angularDirectionComboBox = angDirComboBox
 
         payloadWidget = PayloadWidget()
-        payloadWidget.setMaximumWidth(500)
+        # payloadWidget.setMaximumWidth(500)
         payloadWidget.setMinimumHeight(400)
         self.payloadWidget = payloadWidget
 
@@ -90,13 +92,13 @@ class DeviceWidget(QWidget):
         layout.addWidget(nameLabelEdit, 0, 1, Qt.AlignLeft)
         layout.setRowStretch(0, 1)
 
-        layout.addWidget(longDirLabel, 1, 0, Qt.AlignRight)
-        layout.addWidget(longDirComboBox, 1, 1, Qt.AlignLeft)
+        layout.addWidget(longOrientLabel, 1, 0, Qt.AlignRight)
+        layout.addWidget(longOrientComboBox, 1, 1, Qt.AlignLeft)
         layout.setRowStretch(1, 1)
 
-        layout.addWidget(longOrdLabel, 2, 0, Qt.AlignRight)
-        layout.addWidget(longOrdComboBox, 2, 1, Qt.AlignLeft)
-        layout.setRowStretch(3, 1)
+        layout.addWidget(longDirLabel, 2, 0, Qt.AlignRight)
+        layout.addWidget(longDirComboBox, 2, 1, Qt.AlignLeft)
+        layout.setRowStretch(2, 1)
 
         layout.addWidget(angDirLabel, 3, 0, Qt.AlignRight)
         layout.addWidget(angDirComboBox, 3, 1, Qt.AlignLeft)
@@ -108,28 +110,19 @@ class DeviceWidget(QWidget):
         layout.addWidget(QWidget(), 5, 0)
         layout.setRowStretch(5, 1)
 
-        self.setLayout(layout)
+        parentWidget = QWidget()
+        parentWidget.setLayout(layout)
 
-    # def setUpReactivity(self):
-    #     def updateFiducialComboBox():
-    #         fiducial = self.fiducialComboBox.currentText()
-    #
-    #         formulations = self.payloadWidget.model.formulations
-    #         formulations = ["Notch"] + [
-    #             f"{f.level}, {f.angle}, {f.name}" for f in formulations
-    #         ]
-    #         self.fiducialComboBox.clear()
-    #
-    #         self.fiducialComboBox.insertItems(0, formulations)
-    #         if fiducial in formulations:
-    #             self.fiducialComboBox.setCurrentText(fiducial)
-    #
-    #     self.payloadWidget.model.layoutChanged.connect(lambda: updateFiducialComboBox())
-    #     self.payloadWidget.model.dataChanged.connect(lambda: updateFiducialComboBox())
+        scrollArea = QScrollArea()
+        scrollArea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        scrollArea.setWidget(parentWidget)
+        containerLayout = QVBoxLayout()
+        containerLayout.addWidget(scrollArea)
+        self.setLayout(containerLayout)
 
 
-class DeviceListView(QWidget):
-    def __init__(self, *args, devices: List[Device] = None, **kwargs):
+class DeviceListWidget(QWidget):
+    def __init__(self, devices: List[Device] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._devices = devices or []
@@ -139,6 +132,7 @@ class DeviceListView(QWidget):
 
     def setUpUI(self):
         deviceTabWidget = QTabWidget()
+        deviceTabWidget.setMovable(True)
         self.tabWidget = deviceTabWidget
 
         addDeviceButton = QPushButton()
@@ -148,7 +142,6 @@ class DeviceListView(QWidget):
         deleteDeviceButton = QPushButton()
         deleteDeviceButton.setObjectName("DeleteDeviceButton")
         deleteDeviceButton.setText("Delete device")
-        deleteDeviceButton.setEnabled(self.tabWidget.count() >= 2)
         deleteDeviceButton.setStyleSheet(
             """\
 QPushButton#DeleteDeviceButton {
@@ -160,6 +153,7 @@ QPushButton#DeleteDeviceButton:enabled {
         """
         )
         self.deleteDeviceButton = deleteDeviceButton
+        self._updateDeleteButton()
 
         buttonsLayout = QHBoxLayout()
         buttonsLayout.addStretch(1)
@@ -181,10 +175,14 @@ QPushButton#DeleteDeviceButton:enabled {
 
             widget = DeviceWidget(_init_name=name)
             self.tabWidget.addTab(widget, name)
+
+            def updateTabText(name: str) -> None:
+                index = self.tabWidget.indexOf(widget)
+                self.tabWidget.setTabText(index, name)
+
+            widget.nameLabelEdit.textChanged.connect(lambda name: updateTabText(name))
+
             index = self.tabWidget.indexOf(widget)
-            widget.nameLabelEdit.textChanged.connect(
-                lambda name: self.tabWidget.setTabText(index, name)
-            )
             self.tabWidget.setCurrentIndex(index)
 
             self._updateDeleteButton()
@@ -195,15 +193,9 @@ QPushButton#DeleteDeviceButton:enabled {
             index = self.tabWidget.currentIndex()
             name = self.tabWidget.tabText(index)
 
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle(f"Delete {name}?")
-            msgBox.setIcon(QMessageBox.Question)
-            msgBox.setText(f"Are you sure you want to delete {name}?")
-            msgBox.setWindowModality(Qt.ApplicationModal)
-            msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-            msgBox.setDefaultButton(QMessageBox.No)
-
-            response = msgBox.exec_()
+            response = showDeleteDialog(
+                title=f"Delete {name}?", text=f"Are you sure you want to delete {name}?"
+            )
             if response == QMessageBox.Yes:
                 self.tabWidget.removeTab(index)
 
@@ -212,16 +204,11 @@ QPushButton#DeleteDeviceButton:enabled {
         self.deleteDeviceButton.clicked.connect(lambda: deleteDevice())
 
 
-class DeviceEditor:
-    def __init__(self, devices: List[Device] = None):
-        self.devices = devices or []
-
-
 if __name__ == "__main__":
     import sys
     from PySide2.QtWidgets import QApplication
 
     app = QApplication()
-    widget = DeviceListView()
+    widget = DeviceListWidget()
     widget.show()
     sys.exit(app.exec_())

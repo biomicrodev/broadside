@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Any, Dict, List
 
 from PySide2.QtCore import Qt, Signal, QDir
 from PySide2.QtWidgets import (
@@ -16,10 +17,21 @@ from PySide2.QtWidgets import (
     QPlainTextEdit,
 )
 
-from .device import DeviceListView
+from .device import DeviceListWidget
+from .image import ImageListWidget
+from .samplegroup import SampleGroupListWidget
 from ..panel import BasePanel
+from ...models.device import Device
 from ...models.project import ProjectModel, SaveAction
-from ...utils import QElidedLabel
+from ...utils import QElidedLabel, showSaveDialog
+
+
+def createNoProjectSelectedWidget():
+    settingsWidget = QLabel()
+    settingsWidget.setText("No project selected")
+    settingsWidget.setStyleSheet("font-size: 48px; color: hsl(0, 0%, 80%);")
+    settingsWidget.setAlignment(Qt.AlignCenter)
+    return settingsWidget
 
 
 class ProjectWidget(QWidget):
@@ -35,7 +47,7 @@ class ProjectWidget(QWidget):
 
     def initUI(self):
         statusWidget = self.initStatusWidget()
-        settingsLayout = self.initSettingsLayout()
+        settingsLayout = createNoProjectSelectedWidget()
 
         layout = QHBoxLayout()
         layout.setContentsMargins(6, 6, 6, 6)
@@ -102,13 +114,6 @@ class ProjectWidget(QWidget):
         parentWidget.setFixedWidth(200)
         return parentWidget
 
-    def initSettingsLayout(self) -> QWidget:
-        settingsWidget = QLabel()
-        settingsWidget.setText("No project selected")
-        settingsWidget.setStyleSheet("font-size: 48px; color: hsl(0, 0%, 80%);")
-        settingsWidget.setAlignment(Qt.AlignCenter)
-        return settingsWidget
-
     def initReactivity(self):
         self.selectProjectButton.clicked.connect(lambda: self.selectProject())
 
@@ -129,7 +134,9 @@ class ProjectWidget(QWidget):
             self.log.info(f"{path} picked")
             self.projectSelected.emit(path)
 
-    def updateState(self, *, path: Path, name: str, description: str) -> None:
+    def setProject(
+        self, *, path: Path, name: str, description: str, devices: List[Device]
+    ) -> None:
         self.pathValueLabel.setText(str(path.parent))
         self.pathValueLabel.setToolTip(str(path.parent))
 
@@ -149,15 +156,20 @@ class ProjectWidget(QWidget):
         descriptionBox.setLayout(descriptionLayout)
         descriptionBox.setMaximumHeight(130)
 
-        deviceListWidget = DeviceListView()
-        blockListWidget = QWidget()
-        imageListWidget = QWidget()
+        deviceListWidget = DeviceListWidget(devices)
+        self.deviceListWidget = deviceListWidget
+
+        sampleGroupListWidget = SampleGroupListWidget()
+        self.sampleGroupListWidget = sampleGroupListWidget
+
+        imageListWidget = ImageListWidget()
+        self.imageListWidget = imageListWidget
 
         settingsTabWidget = QTabWidget()
         settingsTabWidget.setObjectName("SettingsWidget")
         settingsTabWidget.setTabPosition(QTabWidget.North)
         settingsTabWidget.addTab(deviceListWidget, "Devices")
-        settingsTabWidget.addTab(blockListWidget, "Blocks")
+        settingsTabWidget.addTab(sampleGroupListWidget, "Sample Groups")
         settingsTabWidget.addTab(imageListWidget, "Images")
 
         settingsLayout = QVBoxLayout()
@@ -183,26 +195,16 @@ class ProjectPanel(BasePanel):
         self.model = model
         self.view = ProjectWidget(parent=parent)
 
-        self.setUpReactivity()
+        # model to view
 
-    def setUpReactivity(self):
         def askSave(newPath: Path):
             name = self.model.name
 
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Unsaved changes")
-            msgBox.setIcon(QMessageBox.Question)
-            msgBox.setWindowModality(Qt.ApplicationModal)
-            msgBox.setText(
-                f"You have unsaved changes pending for project {name}.\n"
-                "Do you want to save your changes?"
+            response = showSaveDialog(
+                title="Unsaved changes",
+                text=f"You have unsaved changes pending for project {name}.\n"
+                "Do you want to save your changes?",
             )
-            msgBox.setStandardButtons(
-                QMessageBox.Save | QMessageBox.Cancel | QMessageBox.Discard
-            )
-            msgBox.setDefaultButton(QMessageBox.Cancel)
-
-            response = msgBox.exec_()
             if response == QMessageBox.Save:
                 action = SaveAction.Save
             elif response == QMessageBox.Discard:
@@ -216,14 +218,14 @@ class ProjectPanel(BasePanel):
 
             self.model.onSaveResponse(newPath=newPath, action=action)
 
-        # model to view
         self.model.askSave.connect(lambda newPath: askSave(newPath))
 
         def updateState():
-            self.view.updateState(
+            self.view.setProject(
                 path=self.model.path,
                 name=self.model.name,
                 description=self.model.description,
+                devices=self.model.devices,
             )
 
             self.view.descriptionTextEdit.textChanged.connect(
@@ -240,3 +242,7 @@ class ProjectPanel(BasePanel):
         self.view.projectSelected.connect(
             lambda path: setattr(self.model, "path", path)
         )
+
+        # init
+        if self.model.path is not None:
+            updateState()

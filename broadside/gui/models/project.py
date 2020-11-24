@@ -6,18 +6,15 @@ from typing import Dict, Any, Optional, List
 
 from PySide2.QtCore import QObject, Signal
 
-from . import QStaleableObject
 from .device import Device
+from .samplegroup import SampleGroup
+from ..utils import QStaleableObject
 
 
 class SaveAction(Enum):
     Save = "SAVE"
     Cancel = "CANCEL"
     Discard = "DISCARD"
-
-
-class Block:
-    pass
 
 
 class Image:
@@ -68,8 +65,8 @@ class ProjectModel(QStaleableObject):
         self._path: Optional[Path] = None
         self._name = ""
         self._description = ""
-        self._blocks: List[Block] = []
         self._devices: List[Device] = []
+        self._sampleGroups: List[SampleGroup] = []
         self._images: List[Image] = []
         self._taskGraph = {}
 
@@ -134,21 +131,28 @@ class ProjectModel(QStaleableObject):
         self.isStale = True
 
     @property
-    def blocks(self) -> List[Block]:
-        return self._blocks
-
-    @blocks.setter
-    def blocks(self, val: List[Block]) -> None:
-        self._blocks = val
-        # TODO: is this the right way? probably not.
-
-    @property
     def devices(self) -> List[Device]:
         return self._devices
 
     @devices.setter
     def devices(self, val: List[Device]) -> None:
         self._devices = val
+
+    @property
+    def sampleGroups(self) -> List[SampleGroup]:
+        return self._sampleGroups
+
+    @sampleGroups.setter
+    def sampleGroups(self, val: List[SampleGroup]) -> None:
+        self._sampleGroups = val
+
+    @property
+    def images(self) -> List[Image]:
+        return self._images
+
+    @images.setter
+    def images(self, val: List[Image]) -> None:
+        self._images = val
 
     def onSaveResponse(self, *, newPath: Path, action: SaveAction) -> None:
         if action == SaveAction.Cancel:
@@ -196,6 +200,8 @@ class ProjectModel(QStaleableObject):
         settings = {
             "name": self.name,
             "description": self.description,
+            "devices": self.devices,
+            "sampleGroups": self.sampleGroups,
         }
 
         filepath = self.path / self.filename
@@ -210,9 +216,9 @@ class ProjectModel(QStaleableObject):
         return {
             "path": self.path,
             "name": self.name,
-            "isStale": self.isStale,
             "description": self.description,
+            "devices": self.devices,
+            "sampleGroups": self.sampleGroups,
+            "images": self.images,
+            "isStale": self.isStale,
         }
-
-    def __str__(self) -> str:
-        return str(self.as_dict())

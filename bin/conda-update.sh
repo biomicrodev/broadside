@@ -7,6 +7,8 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate broadside
 conda env update --file=environment.yml --prune
 
+pip install --requirement requirements.txt --upgrade
+
 <<COMMENT
   In order to force napari to use pyside2, we manually uninstall pyqt5 and its
   dependencies after installing napari. conda installs both backends, even with the

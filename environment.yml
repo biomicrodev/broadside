@@ -2,16 +2,17 @@ name: broadside
 channels:
   - conda-forge
 dependencies:
-  - black
-  - dask
-  - napari
-  - natsort
-  - numpy
-  - pyinstaller
-  - pyqtgraph
-  - pyside2
+  - black>=20.7
+  - dask>=2.30
+  - napari>=0.4
+  - natsort>=7.1
+  - numpy>=1.19
+  - pyinstaller>=4.0
+  - pyqtgraph>=0.11
+  - pyside2>=5.13
   - pytest
-  - python>=3.9
+  - python>=3.8
+  - qtpynodeeditor>=0.2
   - scikit-image
-  - tifffile
-  - tqdm
+  - tifffile>=2020.10
+  - tqdm>=4.53

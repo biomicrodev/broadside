@@ -31,3 +31,8 @@ If it does get that complex though, one idea would be to have a `Project` class 
 the minimum possible specification of the state, a `Mutations` class of static methods
 with state mutations, and a `QObject` subclass that handles signals from the model to
 the view.
+
+# Version constraints
+
+- PySide2 throws a `SIGSEGV` with python 3.8 specifically.
+- Importing vispy throws an import error with python 3.9 (but should be fixed soon: see [here](https://github.com/vispy/vispy/issues/1947))

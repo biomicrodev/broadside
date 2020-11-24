@@ -1,0 +1,2 @@
+class SampleGroup:
+    pass

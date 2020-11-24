@@ -94,7 +94,7 @@ class Viewer:
             name = self.model.name
 
             if not self.model.isStale:
-                self.log.info(f"Project {name} already saved; quitting")
+                self.log.info(f"Project {name} has no changes; quitting")
                 event.accept()
                 return
 
