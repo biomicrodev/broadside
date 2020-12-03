@@ -1,9 +1,11 @@
-import datetime
-import time
+import cProfile
+import pstats
 from typing import Callable, Any
 
 
-def profile(msg: str = None, *, output: Callable = print) -> Callable:
+def cprofile(
+    msg: str = None, *, sort_by: str = "cumtime", n_lines: int = 10
+) -> Callable:
     """
     A simple decorator for seeing how long something takes.
     For in-depth profiling, use cProfile.
@@ -32,12 +34,14 @@ def profile(msg: str = None, *, output: Callable = print) -> Callable:
 
     def outer(func: Callable) -> Callable:
         def inner(*args, **kwargs) -> Any:
-            t0 = time.time()
-            result = func(*args, **kwargs)
-            t1 = time.time()
+            pr = cProfile.Profile()
+            pr.enable()
 
-            elapsed_time = datetime.timedelta(seconds=t1 - t0)
-            output(f"{msg}: {elapsed_time}")
+            result = func(*args, **kwargs)
+
+            pr.disable()
+            print(msg)
+            pstats.Stats().strip_dirs().sort_stats(sort_by).print_stats(n_lines)
 
             return result
 

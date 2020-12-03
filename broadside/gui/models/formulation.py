@@ -1,9 +1,10 @@
-import json
 import math
-from typing import Optional, Dict, Any, Union, Callable
+from typing import Optional, Dict, Union, Any
+
+from . import Serializable
 
 
-class Formulation:
+class Formulation(Serializable):
     keys = ["level", "angle", "name"]
     headers = ["Level", "Angle", "Name"]
     types = [str, float, str]
@@ -54,18 +55,7 @@ class Formulation:
     def as_dict(self) -> Dict[str, Any]:
         return {"level": self.level, "angle": self.angle, "name": self.name}
 
-    def to_json(self, serializer: Callable = None) -> str:
-        if serializer is None:
-            serializer = lambda s: json.dumps(s, indent=2)
-        return serializer(self.as_dict())
-
     @classmethod
-    def from_json(cls, s: str):
-        dct = json.loads(s)
-        return cls.from_dict(dct)
-
-    @classmethod
-    def from_dict(cls, dct):
-        return cls(
-            level=str(dct["level"]), angle=float(dct["angle"]), name=str(dct["name"])
-        )
+    def from_dict(cls, dct: Dict[str, Any]):
+        """Serialization code. Awkward, but works (at least for now)"""
+        return cls(level=dct["level"], angle=float(dct["angle"]), name=dct["name"])

@@ -1,19 +1,14 @@
 from PySide2.QtWidgets import QWidget, QLabel, QVBoxLayout
 
 
-class SampleGroupListEditorView(QWidget):
+class AnnotationView(QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         label = QLabel()
-        label.setText("Sample group list editor")
+        label.setText("Annotation editor")
 
         layout = QVBoxLayout()
         layout.addWidget(label)
 
         self.setLayout(layout)
-
-
-class SampleGroupListEditor:
-    def __init__(self):
-        self.view = SampleGroupListEditorView()

@@ -1,26 +1,18 @@
-from PySide2.QtWidgets import QWidget, QVBoxLayout, QLabel
+import logging
 
-from ..panel import BasePanel
-from ...models.project import ProjectModel
-
-
-class AnnotationWidget(QWidget):
-    def __init__(self, parent: QWidget = None):
-        super().__init__(parent=parent)
-
-        label = QLabel()
-        label.setText("Annotation panel")
-
-        layout = QVBoxLayout()
-        layout.addWidget(label)
-        self.setLayout(layout)
+from .view import AnnotationView
+from ..editor import BaseEditor
 
 
-class AnnotationPanel(BasePanel):
+class AnnotationEditor(BaseEditor):
+    log = logging.getLogger(__name__)
+
     name = "Annotation"
 
-    def __init__(self, *args, model: ProjectModel, parent: QWidget = None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.model = model
-        self.view = AnnotationWidget(parent=parent)
+        self.view = AnnotationView()
+
+    def beforeDelete(self) -> None:
+        pass

@@ -14,5 +14,5 @@ dependencies:
   - python>=3.8
   - qtpynodeeditor>=0.2
   - scikit-image
-  - tifffile>=2020.10
+  - tifffile
   - tqdm>=4.53

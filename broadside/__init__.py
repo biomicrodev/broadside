@@ -1,10 +1,11 @@
 import logging
 import sys
+from pathlib import Path
 
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QApplication
 
-from broadside.gui.viewer import Viewer
+from .gui.viewer import Viewer
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -23,7 +24,8 @@ def run():
 
     log.info("QApp started")
 
-    viewer = Viewer(app=app)
-    viewer.show()
+    Viewer(
+        app=app, theme="light", path=Path("/home/sebastian/limbo/projects/test_project")
+    )
 
     sys.exit(app.exec_())

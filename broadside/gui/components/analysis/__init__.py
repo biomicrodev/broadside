@@ -1,26 +1,18 @@
-from PySide2.QtWidgets import QWidget, QLabel, QVBoxLayout
+import logging
 
-from ..panel import BasePanel
-from ...models.project import ProjectModel
-
-
-class AnalysisWidget(QWidget):
-    def __init__(self, parent: QWidget = None):
-        super().__init__(parent=parent)
-
-        label = QLabel()
-        label.setText("Analysis panel")
-
-        layout = QVBoxLayout()
-        layout.addWidget(label)
-        self.setLayout(layout)
+from .view import AnalysisView
+from ..editor import BaseEditor
 
 
-class AnalysisPanel(BasePanel):
+class AnalysisEditor(BaseEditor):
+    log = logging.getLogger(__name__)
+
     name = "Analysis"
 
-    def __init__(self, *args, model: ProjectModel, parent: QWidget = None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.model = model
-        self.view = AnalysisWidget(parent=parent)
+        self.view = AnalysisView()
+
+    def beforeDelete(self) -> None:
+        pass

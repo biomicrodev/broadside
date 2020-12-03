@@ -2,13 +2,15 @@ import json
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from pprint import pprint
+from typing import Optional, List, Dict, Any
 
-from PySide2.QtCore import QObject, Signal
+from PySide2.QtCore import Signal, QObject
 
+from . import Serializable
 from .device import Device
+from .image import Image
 from .samplegroup import SampleGroup
-from ..utils import QStaleableObject
 
 
 class SaveAction(Enum):
@@ -17,11 +19,7 @@ class SaveAction(Enum):
     Discard = "DISCARD"
 
 
-class Image:
-    pass
-
-
-class ProjectModel(QStaleableObject):
+class ProjectModel(QObject):
     """
     Model containing domain logic, including workflow management.
 
@@ -56,11 +54,13 @@ class ProjectModel(QStaleableObject):
     filename = "project.json"
 
     # model to view
-    askSave = Signal(Path)
-    projectChanged = Signal()
+    pathChanged = Signal()
+    isStaleChanged = Signal()
 
-    def __init__(self, parent: QObject = None):
-        super().__init__(parent=parent)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._isStale = False
 
         self._path: Optional[Path] = None
         self._name = ""
@@ -70,14 +70,19 @@ class ProjectModel(QStaleableObject):
         self._images: List[Image] = []
         self._taskGraph = {}
 
-        self._logEvents()
+        # logging
+        self.isStaleChanged.connect(lambda: self.log.info("isStaleChanged emitted"))
+        self.pathChanged.connect(lambda: self.log.info("pathChanged emitted"))
 
-    def _logEvents(self):
-        self.askSave.connect(lambda: self.log.info("askSave emitted"))
-        self.projectChanged.connect(
-            lambda: self.log.info(f"projectChanged to {self._path}")
-        )
-        self.isStaleChanged.connect(lambda: self.log.info("isStale emitted"))
+    @property
+    def isStale(self) -> bool:
+        return self._isStale
+
+    @isStale.setter
+    def isStale(self, val: bool) -> None:
+        if self.isStale is not val:
+            self._isStale = val
+            self.isStaleChanged.emit()
 
     @property
     def path(self) -> Path:
@@ -85,14 +90,13 @@ class ProjectModel(QStaleableObject):
 
     @path.setter
     def path(self, val: Optional[Path]) -> None:
-        if not val or str(val) == "":
+        if (not val) or (str(val) == ""):
             self.log.info("Project setter called with empty path; path not changed")
             return
 
         if self.path is None:
             # no currently active project, so just set path
-            self._setPath(val)
-            self._read()
+            self._updatePath(val)
 
         elif self.path == val:
             self.log.info("No change in path")
@@ -101,84 +105,24 @@ class ProjectModel(QStaleableObject):
             self.log.warning(f"{str(self.path)} not a directory! Path not changed")
 
         elif self.isStale:
-            self.askSave.emit(val)
+            self.log.warning(
+                "Project setter called when stale; ensure controller checks before setting"
+            )
 
         else:
-            self._setPath(val)
-            self._read()
+            self._updatePath(val)
 
-    def _setPath(self, val: Path) -> None:
+    def _updatePath(self, newPath: Path) -> None:
         """
         We don't change the project path until we get a response from the user, to make
         sure that any changes that must be saved are resolved.
+
+        This is where the serialization from json to object happens. It's a bit messy,
+        but this'll be enough for the scale we need.
         """
-        self._path = val
-        self._name = val.name
+        self._path = newPath
+        self._name = newPath.name
 
-        self.projectChanged.emit()
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def description(self) -> str:
-        return self._description
-
-    @description.setter
-    def description(self, val: str) -> None:
-        self._description = val
-        self.isStale = True
-
-    @property
-    def devices(self) -> List[Device]:
-        return self._devices
-
-    @devices.setter
-    def devices(self, val: List[Device]) -> None:
-        self._devices = val
-
-    @property
-    def sampleGroups(self) -> List[SampleGroup]:
-        return self._sampleGroups
-
-    @sampleGroups.setter
-    def sampleGroups(self, val: List[SampleGroup]) -> None:
-        self._sampleGroups = val
-
-    @property
-    def images(self) -> List[Image]:
-        return self._images
-
-    @images.setter
-    def images(self, val: List[Image]) -> None:
-        self._images = val
-
-    def onSaveResponse(self, *, newPath: Path, action: SaveAction) -> None:
-        if action == SaveAction.Cancel:
-            self.log.info("Project settings save cancelled")
-            pass
-
-        elif action == SaveAction.Save:
-            self.log.info("Project settings saved")
-            self.save()
-            self._setPath(newPath)
-            self._read()
-
-            self.isStale = False
-
-        elif action == SaveAction.Discard:
-            self.log.info("Project settings discarded")
-            # do not save here
-            self._setPath(newPath)
-            self._read()
-
-            self.isStale = False
-
-        else:
-            raise RuntimeError(f"Unknown action {str(action)}")
-
-    def _read(self) -> None:
         filepath = self.path / self.filename
 
         settings = {}
@@ -191,8 +135,39 @@ class ProjectModel(QStaleableObject):
             self.log.info("Settings file not found")
 
         self._description = settings.get("description", "")
+        self._devices = [Device.from_dict(d) for d in settings.get("devices", [])]
+        # self._sampleGroups = [
+        #     SampleGroup.from_dict(s) for s in settings.get("sampleGroups", [])
+        # ]
+
+        self.pathChanged.emit()
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @description.setter
+    def description(self, val: str) -> None:
+        if self.description != val:
+            self._description = val
+            self.isStale = True
+
+    @property
+    def devices(self) -> List[Device]:
+        return self._devices
+
+    @property
+    def sampleGroups(self) -> List[SampleGroup]:
+        return self._sampleGroups
 
     def save(self) -> None:
+        """
+        This is where the serialization from object to json happens.
+        """
         if self.path is None:
             self.log.info("Path is none, so not saving")
             return
@@ -200,25 +175,14 @@ class ProjectModel(QStaleableObject):
         settings = {
             "name": self.name,
             "description": self.description,
-            "devices": self.devices,
-            "sampleGroups": self.sampleGroups,
+            "devices": [d.as_dict() for d in self.devices],
+            # "sampleGroups": [s.as_dict() for s in self.sampleGroups],
         }
 
         filepath = self.path / self.filename
-        with open(str(filepath), "w+") as file:
+        with filepath.open("w+") as file:
             json.dump(settings, file, indent=2)
 
         self.isStale = False
 
         self.log.info(f"Settings saved to {str(filepath)}")
-
-    def as_dict(self) -> Dict[str, Any]:
-        return {
-            "path": self.path,
-            "name": self.name,
-            "description": self.description,
-            "devices": self.devices,
-            "sampleGroups": self.sampleGroups,
-            "images": self.images,
-            "isStale": self.isStale,
-        }

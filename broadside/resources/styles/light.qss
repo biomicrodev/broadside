@@ -1,0 +1,47 @@
+/* Globals */
+QWidget {
+    font-family: 'Ubuntu', sans-serif;
+}
+
+QMainWindow {
+    background-color: hsl(0, 0%, 95%);
+}
+
+/* Menu Bar */
+QMenuBar {
+    font-size: 10pt;
+    spacing: 0px;
+}
+
+QMenuBar::item {
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 1px solid lightgray;
+    padding: 3px 6px;
+}
+
+QMenuBar::item:pressed {
+    background-color: hsl(0, 0%, 20%);
+}
+
+QPushButton#selectProjectButton {
+    padding: 15px 25px;
+    font-size: 18px;
+}
+
+QHLine {
+    color: lightgray;
+}
+
+QLabel#noProjectSelectedLabel {
+    font-size: 48px;
+    color: hsl(0, 0%, 80%);
+}
+
+QPushButton#deleteDeviceButton {
+    background-color: rgb(190, 30, 30);
+}
+QPushButton#deleteDeviceButton:enabled {
+    color: white;
+}

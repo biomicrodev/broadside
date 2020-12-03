@@ -132,8 +132,8 @@ class ChevronWidget(QWidget):
         self.update()
 
 
-class NavigationWidget(QWidget):
-    def __init__(self, *args, labels: List[str], **kwargs):
+class NavigatorWidget(QWidget):
+    def __init__(self, labels: List[str], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if len(labels) < 2:
@@ -147,7 +147,7 @@ class NavigationWidget(QWidget):
         self.chevronWidgets: List[ChevronWidget] = []
 
         self.initLayout()
-        self.setState(0, False)
+        self.setState(index=0, isComplete=False)
 
     def initLayout(self):
         sequenceLayout = QHBoxLayout()
@@ -193,7 +193,7 @@ class NavigationWidget(QWidget):
 
         self.setLayout(layout)
 
-    def setState(self, index: int, complete: bool) -> None:
+    def setState(self, *, index: int, isComplete: bool) -> None:
         if (index < 0) or (index >= len(self.labels)):
             raise IndexError(f"Index {index} out of bounds; length {len(self.labels)}")
 
@@ -201,7 +201,7 @@ class NavigationWidget(QWidget):
             if i < index:
                 state = StepStatus.Complete
             elif i == index:
-                state = StepStatus.Complete if complete else StepStatus.InProgress
+                state = StepStatus.Complete if isComplete else StepStatus.InProgress
             else:
                 state = StepStatus.Incomplete
 
@@ -211,7 +211,7 @@ class NavigationWidget(QWidget):
             if i < index:
                 state = StepProgress.Enabled
             elif i == index:
-                state = StepProgress.Enabled if complete else StepProgress.Disabled
+                state = StepProgress.Enabled if isComplete else StepProgress.Disabled
             else:
                 state = StepProgress.Disabled
 

@@ -1,130 +1,207 @@
 import logging
-from typing import List, Type
+from pathlib import Path
+from typing import Optional, Type, List
 
-from PySide2.QtCore import Qt
+from PySide2.QtCore import QObject, Signal, Qt, QDir
 from PySide2.QtGui import QCloseEvent
-from PySide2.QtWidgets import QWidget, QApplication, QMessageBox
+from PySide2.QtWidgets import QApplication, QMessageBox, QFileDialog, QWidget
 
-from .components import (
-    AnalysisPanel,
-    AnnotationPanel,
-    BasePanel,
-    ProjectPanel,
-    MainWindow,
-)
-from .components.navigation.model import NavigationModel
+from .components.analysis import AnalysisEditor
+from .components.annotation import AnnotationEditor
+from .components.editor import BaseEditor
+from .components.mainwindow import MainWindow
+from .components.navigation import Navigator
+from .components.project import ProjectEditor
+from .components.utils import showSaveDialog
 from .models.project import ProjectModel
+
+
+def showSelectProjectDialog(parent: QWidget = None) -> Optional[Path]:
+    dialog = QFileDialog(parent, Qt.Dialog)
+    dialog.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Dialog)
+    dialog.setAcceptMode(QFileDialog.AcceptSave)
+    dialog.setLabelText(QFileDialog.LookIn, "Select project folder")
+    dialog.setFileMode(QFileDialog.Directory)
+    dialog.setOption(QFileDialog.ShowDirsOnly, True)
+    dialog.setViewMode(QFileDialog.Detail)
+    dialog.setDirectory(QDir.homePath())
+
+    if dialog.exec_():
+        paths = dialog.selectedFiles()
+        assert len(paths) == 1
+        path = Path(paths[0])
+        return path
+
+    return None
 
 
 class Viewer:
     log = logging.getLogger(__name__)
 
-    def __init__(self, app: QApplication):
+    def __init__(self, app: QApplication, *, theme: str = "light", path: Path = None):
         self.app = app
+        self.app.setStyle("Fusion")
 
-        self.panels: List[Type[BasePanel]] = [
-            ProjectPanel,
-            AnnotationPanel,
-            AnalysisPanel,
+        self.theme = theme
+
+        self.currentEditor: Optional[Type[BaseEditor]] = None
+        self.editors: List[Type[BaseEditor]] = [
+            ProjectEditor,
+            AnnotationEditor,
+            AnalysisEditor,
         ]
 
-        panelNames = [p.name for p in self.panels]
+        editorNames: List[str] = [e.name for e in self.editors]
 
-        self.window = MainWindow()
-        self.window.initCentralWidget(panelNames=panelNames)
+        # set up models and views
+        self.navigator = Navigator(editorNames)
+        self.view = MainWindow()
+        self.view.initCentralWidget(self.navigator.view)
+        self.projectModel = ProjectModel()
 
-        self.initModel()
-        self.initNav()
-        self.initWindowReactivity()
+        self.initReactivity()
 
-    def initModel(self):
-        self.model = ProjectModel()
+        # it's showtime
+        self.view.show()
 
-        def updateTitle():
-            name = self.model.name
-            isStale = self.model.isStale
+        if path is not None:
+            self.projectModel.path = path
 
-            title = (
-                "Broadside" + (f" – {name}" if name else "") + ("*" if isStale else "")
-            )
-            self.window.setWindowTitle(title)
+    def initReactivity(self):
+        # from model
+        self.navigator.model.indexChanged.connect(lambda: self.updateEditor())
+        self.projectModel.isStaleChanged.connect(lambda: self.updateWindow())
+        self.projectModel.pathChanged.connect(lambda: self.updateWindow())
 
-        self.model.isStaleChanged.connect(lambda: updateTitle())
-        self.model.projectChanged.connect(lambda: updateTitle())
+        # from view
+        self.view.saveAction.triggered.connect(lambda: self.projectModel.save())
+        self.view.quitAction.triggered.connect(lambda: self.view.close())
+        self.view.openAction.triggered.connect(lambda: self.onProjectSelectRequest())
+        self.view.aboutToClose.connect(lambda e: self.aboutToQuit(e))
+        self.view.toggleThemeAction.triggered.connect(lambda: self.toggleTheme())
 
-    def initNav(self):
-        self.navModel = NavigationModel(n=len(self.panels))
+        # initialize
+        self.view.applyStyleSheet(self.theme)
+        self.updateWindow()
+        self.updateEditor()
 
-        # set up reactivity
-        self.navModel.indexChanged.connect(lambda: self.refresh())
-        self.window.navPanel.backButton.clicked.connect(
-            lambda: self.navModel.move_back()
-        )
-        self.window.navPanel.nextButton.clicked.connect(
-            lambda: self.navModel.move_next()
-        )
+    def toggleTheme(self) -> None:
+        if self.theme == "light":
+            self.theme = "dark"
+        elif self.theme == "dark":
+            self.theme = "light"
 
-        # initial state
-        self.refresh()
+        self.view.applyStyleSheet(self.theme)
 
-    def refresh(self):
-        # delete current widget ...
-        widget: QWidget = self.window.panelContainer.itemAt(0).widget()
+        self.log.info(f"Theme toggled to {self.theme}")
+
+    def updateWindow(self) -> None:
+        self.log.info("Update window requested")
+
+        # update title
+        name = self.projectModel.name
+        isStale = self.projectModel.isStale
+
+        title = "Broadside" + (f" – {name}" if name else "") + ("*" if isStale else "")
+        self.view.setWindowTitle(title)
+
+        # update menu
+        path = self.projectModel.path
+        self.view.saveAction.setEnabled(path is not None)
+
+    def updateEditor(self) -> None:
+        self.log.info("Update editor requested")
+
+        # delete current widget...
+        if self.currentEditor is not None:
+            self.currentEditor.beforeDelete()
+            del self.currentEditor
+
+        widget: QWidget = self.view.editorViewContainer.itemAt(0).widget()
         widget.deleteLater()
 
         # ... and add the next one
-        index = self.navModel.index
-        panel = self.panels[index](model=self.model, parent=self.window)
-        self.window.panelContainer.addWidget(panel.view)
+        index = self.navigator.model.index
+        Editor = self.editors[index]
+        self.currentEditor = Editor(model=self.projectModel)
+        self.view.editorViewContainer.addWidget(self.currentEditor.view)
 
-        # refresh navigation panel
-        self.window.navPanel.setState(self.navModel.index, False)
-        self.window.navPanel.backButton.setEnabled(not self.navModel.first)
-        self.window.navPanel.nextButton.setEnabled(not self.navModel.last)
+        # when editor is complete, let viewer know
+        def updateIsComplete():
+            self.navigator.model.isComplete = self.currentEditor.isComplete
 
-    def initWindowReactivity(self):
-        self.window.saveAction.triggered.connect(lambda: self.model.save())
+        self.currentEditor.isCompleteChanged.connect(updateIsComplete)
+        updateIsComplete()
 
-        def aboutToQuit(event: QCloseEvent = None):
-            if self.model.path is None:
-                self.log.info("No project set; quitting")
-                event.accept()
-                return
-
-            name = self.model.name
-
-            if not self.model.isStale:
-                self.log.info(f"Project {name} has no changes; quitting")
-                event.accept()
-                return
-
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("About to quit")
-            msgBox.setIcon(QMessageBox.Question)
-            msgBox.setWindowModality(Qt.ApplicationModal)
-            msgBox.setText(
-                f"You have unsaved changes pending for project {name}.\n"
-                "Do you want to save your changes?"
+        # if project editor changes project, let viewer know
+        if isinstance(self.currentEditor, ProjectEditor):
+            self.currentEditor.projectSelectRequested.connect(
+                lambda: self.onProjectSelectRequest()
             )
-            msgBox.setStandardButtons(
-                QMessageBox.Save | QMessageBox.Cancel | QMessageBox.Discard
-            )
-            msgBox.setDefaultButton(QMessageBox.Cancel)
 
-            response = msgBox.exec_()
+        # if data has changed in editor, let viewer know
+        def setStale():
+            self.projectModel.isStale = True
+
+        self.currentEditor.dataChanged.connect(lambda: setStale())
+
+    def aboutToQuit(self, event: QCloseEvent) -> None:
+        self.log.info("About to quit requested")
+
+        if self.projectModel.path is None:
+            self.log.info("No project set; quitting")
+            event.accept()
+            return
+
+        name = self.projectModel.name
+
+        if not self.projectModel.isStale:
+            self.log.info(f"Project {name} has no changes; quitting")
+            event.accept()
+            return
+
+        response = showSaveDialog(
+            parent=self.view,
+            title="About to quit",
+            text=f"You have unsaved changes pending for project {name}.\n"
+            "Do you want to save your changes?",
+        )
+        if response == QMessageBox.Save:
+            self.projectModel.save()
+            self.log.info(f"Project {name} saved; quitting")
+            event.accept()
+        elif response == QMessageBox.Discard:
+            self.log.info(f"Project {name} not saved; quitting")
+            event.accept()
+        elif response == QMessageBox.Cancel:
+            self.log.info(f"Project {name} not saved; not quitting")
+            event.ignore()
+
+    def onProjectSelectRequest(self) -> None:
+        self.log.info("On project select requested")
+
+        if self.projectModel.isStale:
+            # ask user what to do since a save is pending
+            name = self.projectModel.name
+            response = showSaveDialog(
+                parent=self.view,
+                title="Unsaved changes",
+                text=f"You have unsaved changes pending for project {name}.\n"
+                "Do you want to save your changes?",
+            )
+
             if response == QMessageBox.Save:
-                self.model.save()
-                self.log.info(f"Project {name} saved; quitting")
-                event.accept()
+                self.projectModel.save()
             elif response == QMessageBox.Discard:
-                self.log.info(f"Project {name} not saved; quitting")
-                event.accept()
+                pass
             elif response == QMessageBox.Cancel:
-                self.log.info(f"Project {name} not saved; not quitting")
-                event.ignore()
+                return
+            else:
+                raise RuntimeError(f"Unknown response {response}")
 
-        self.window.aboutToClose.connect(lambda event: aboutToQuit(event))
-        self.window.quitAction.triggered.connect(lambda: self.window.close())
+            self.projectModel.isStale = False
 
-    def show(self):
-        self.window.show()
+        newPath = showSelectProjectDialog(parent=self.view)
+        if newPath is not None:
+            self.projectModel.path = newPath
+            self.navigator.model.index = self.editors.index(ProjectEditor)

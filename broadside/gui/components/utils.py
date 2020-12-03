@@ -1,49 +1,28 @@
-from PySide2.QtCore import Qt, QObject, Signal
+from PySide2.QtCore import Qt
 from PySide2.QtGui import QFontMetrics
-from PySide2.QtWidgets import QFrame, QLabel, QMessageBox
-
-
-class QStaleableObject(QObject):
-    """
-    A simple QObject that indicates whether it is stale or not. To use this object,
-    connect to the `isStaleChanged` signal and set `isStale` appropriately.
-    """
-
-    isStaleChanged = Signal()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._isStale = False
-
-    @property
-    def isStale(self) -> bool:
-        return self._isStale
-
-    @isStale.setter
-    def isStale(self, val: bool) -> None:
-        if self.isStale is not val:
-            self._isStale = val
-            self.isStaleChanged.emit()
+from PySide2.QtWidgets import QFrame, QLabel, QMessageBox, QWidget
 
 
 class QHLine(QFrame):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.setFixedHeight(1)
         self.setFrameShape(QFrame.HLine)
         self.setFrameShadow(QFrame.Plain)
 
 
 class QElidedLabel(QLabel):
-    def setText(self, text: str):
+    def setText(self, text: str) -> None:
         metrics = QFontMetrics(self.font())
         elidedText: str = metrics.elidedText(text, Qt.ElideMiddle, self.width())
         super().setText(elidedText)
 
 
-def showSaveDialog(*, title: str, text: str) -> QMessageBox.StandardButton:
-    box = QMessageBox()
+def showSaveDialog(
+    parent: QWidget = None, *, title: str, text: str
+) -> QMessageBox.StandardButton:
+    box = QMessageBox(parent)
     box.setWindowTitle(title)
     box.setWindowModality(Qt.ApplicationModal)
     box.setText(text)
@@ -53,8 +32,10 @@ def showSaveDialog(*, title: str, text: str) -> QMessageBox.StandardButton:
     return box.exec_()
 
 
-def showDeleteDialog(*, title: str, text: str) -> QMessageBox.StandardButton:
-    box = QMessageBox()
+def showYesNoDialog(
+    parent: QWidget = None, *, title: str, text: str
+) -> QMessageBox.StandardButton:
+    box = QMessageBox(parent)
     box.setWindowTitle(title)
     box.setWindowModality(Qt.ApplicationModal)
     box.setText(text)

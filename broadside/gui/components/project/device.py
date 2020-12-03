@@ -1,214 +1,262 @@
-from typing import List, Optional
+import logging
+from typing import List
 
-from PySide2.QtCore import Qt
+from PySide2.QtCore import Signal, Qt, QObject
 from PySide2.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QTabWidget,
-    QHBoxLayout,
     QPushButton,
-    QMessageBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QComboBox,
     QGridLayout,
-    QScrollArea,
-    QAbstractScrollArea,
+    QComboBox,
+    QTabBar,
+    QMessageBox,
 )
 
-from broadside.gui.components.project.payload import PayloadWidget
-from broadside.gui.models.device import (
-    LongitudinalOrientation,
-    LongitudinalDirection,
-    AngularDirection,
+from ..utils import showYesNoDialog
+from ...models.device import (
     Device,
+    LongitudinalDirection,
+    LongitudinalOrientation,
+    AngularDirection,
 )
-from broadside.gui.utils import showDeleteDialog, QStaleableObject
 
 
-class DeviceWidget(QWidget, QStaleableObject):
-    def __init__(
-        self, *args, device: Optional[Device] = None, _init_name: str = "", **kwargs
-    ):
+class DeviceEditor(QWidget):
+    dataChanged = Signal()
+
+    def __init__(self, device: Device, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self._device = device
-        self._init_name = _init_name
 
         self.setUpUI()
 
+        # set up reactivity
+        def onNameChange():
+            name = self.nameLineEdit.text()
+            device.name = name
+            self.dataChanged.emit()
+
+        self.nameLineEdit.textChanged.connect(lambda: onNameChange())
+
+        def onLongitudinalOrientationChange():
+            longOrient = LongitudinalOrientation(
+                self.longitudinalOrientationComboBox.currentText()
+            )
+            device.longitudinalOrientation = longOrient
+            self.dataChanged.emit()
+
+        self.longitudinalOrientationComboBox.currentIndexChanged.connect(
+            lambda: onLongitudinalOrientationChange()
+        )
+
+        def onLongitudinalDirectionChange():
+            longDir = LongitudinalDirection(
+                self.longitudinalDirectionComboBox.currentText()
+            )
+            device.longitudinalDirection = longDir
+            self.dataChanged.emit()
+
+        self.longitudinalDirectionComboBox.currentIndexChanged.connect(
+            lambda: onLongitudinalDirectionChange()
+        )
+
+        # populate fields
+        self.nameLineEdit.setText(device.name)
+        longOrient = device.longitudinalOrientation
+        if longOrient is None:
+            self.longitudinalOrientationComboBox.setCurrentIndex(0)
+            device.longitudinalOrientation = LongitudinalOrientation(
+                self.longitudinalOrientationComboBox.itemText(0)
+            )
+        else:
+            self.longitudinalOrientationComboBox.setCurrentText(longOrient.value)
+
+        longDir = device.longitudinalDirection
+        if longDir is None:
+            self.longitudinalDirectionComboBox.setCurrentIndex(0)
+            device.longitudinalDirection = LongitudinalDirection(
+                self.longitudinalDirectionComboBox.itemText(0)
+            )
+        else:
+            self.longitudinalDirectionComboBox.setCurrentText(longDir.value)
+
+        angDir = device.angularDirection
+        if angDir is None:
+            self.angularDirectionComboBox.setCurrentIndex(0)
+            device.angularDirection = AngularDirection(
+                self.angularDirectionComboBox.itemText(0)
+            )
+        else:
+            self.angularDirectionComboBox.setCurrentText(angDir.value)
+
     def setUpUI(self):
         nameLabel = QLabel("Name:")
-        nameLabelEdit = QLineEdit(self._init_name)
-        nameLabel.setBuddy(nameLabelEdit)
-        self.nameLabelEdit = nameLabelEdit
+        nameLineEdit = QLineEdit()
+        nameLabel.setBuddy(nameLineEdit)
+        self.nameLineEdit = nameLineEdit
 
         longOrientLabel = QLabel("Longitudinal orientation:")
-        longOrientComboBox = QComboBox()
-        longOrientComboBox.insertItems(
-            0,
+        longOrientCombo = QComboBox()
+        longOrientCombo.addItems(
             [
                 LongitudinalOrientation.TipIntoPage.value,
                 LongitudinalOrientation.TipOutOfPage.value,
-            ],
+            ]
         )
-        longOrientLabel.setBuddy(longOrientComboBox)
-        self.longitudinalOrientationComboBox = longOrientComboBox
+        longOrientLabel.setBuddy(longOrientCombo)
+        self.longitudinalOrientationComboBox = longOrientCombo
 
         longDirLabel = QLabel("Longitudinal direction:")
-        longDirComboBox = QComboBox()
-        longDirComboBox.insertItems(
-            0,
+        longDirCombo = QComboBox()
+        longDirCombo.addItems(
             [
                 LongitudinalDirection.IncreasingTowardsTip.value,
                 LongitudinalDirection.IncreasingTowardsBooster.value,
-            ],
+            ]
         )
-        longDirLabel.setBuddy(longDirComboBox)
-        self.longitudinalDirectionComboBox = longDirComboBox
+        longDirLabel.setBuddy(longDirCombo)
+        self.longitudinalDirectionComboBox = longDirCombo
 
         angDirLabel = QLabel("Angular direction:")
-        angDirComboBox = QComboBox()
-        angDirComboBox.insertItems(
-            0,
-            [AngularDirection.Clockwise.value, AngularDirection.CounterClockwise.value],
+        angDirCombo = QComboBox()
+        angDirCombo.addItems(
+            [AngularDirection.Clockwise.value, AngularDirection.CounterClockwise.value]
         )
-        angDirComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        angDirLabel.setBuddy(angDirComboBox)
-        self.angularDirectionComboBox = angDirComboBox
-
-        payloadWidget = PayloadWidget()
-        # payloadWidget.setMaximumWidth(500)
-        payloadWidget.setMinimumHeight(400)
-        self.payloadWidget = payloadWidget
+        angDirLabel.setBuddy(angDirCombo)
+        self.angularDirectionComboBox = angDirCombo
 
         layout = QGridLayout()
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
-        layout.setColumnMinimumWidth(0, 200)
-        layout.setColumnMinimumWidth(1, 200)
 
         layout.addWidget(nameLabel, 0, 0, Qt.AlignRight)
-        layout.addWidget(nameLabelEdit, 0, 1, Qt.AlignLeft)
-        layout.setRowStretch(0, 1)
+        layout.addWidget(nameLineEdit, 0, 1, Qt.AlignLeft)
+        layout.setRowStretch(0, 0)
 
-        layout.addWidget(longOrientLabel, 1, 0, Qt.AlignRight)
-        layout.addWidget(longOrientComboBox, 1, 1, Qt.AlignLeft)
-        layout.setRowStretch(1, 1)
+        layout.addWidget(longDirLabel, 1, 0, Qt.AlignRight)
+        layout.addWidget(longDirCombo, 1, 1, Qt.AlignLeft)
+        layout.setRowStretch(1, 0)
 
-        layout.addWidget(longDirLabel, 2, 0, Qt.AlignRight)
-        layout.addWidget(longDirComboBox, 2, 1, Qt.AlignLeft)
-        layout.setRowStretch(2, 1)
+        layout.addWidget(angDirLabel, 2, 0, Qt.AlignRight)
+        layout.addWidget(angDirCombo, 2, 1, Qt.AlignLeft)
 
-        layout.addWidget(angDirLabel, 3, 0, Qt.AlignRight)
-        layout.addWidget(angDirComboBox, 3, 1, Qt.AlignLeft)
+        layout.addWidget(QWidget(), 3, 0)
         layout.setRowStretch(3, 1)
 
-        layout.addWidget(payloadWidget, 4, 0, 1, 2)
-        layout.setRowStretch(4, 1)
-
-        layout.addWidget(QWidget(), 5, 0)
-        layout.setRowStretch(5, 1)
-
-        parentWidget = QWidget()
-        parentWidget.setLayout(layout)
-
-        scrollArea = QScrollArea()
-        scrollArea.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
-        scrollArea.setWidget(parentWidget)
-        containerLayout = QVBoxLayout()
-        containerLayout.addWidget(scrollArea)
-        self.setLayout(containerLayout)
+        self.setLayout(layout)
 
 
-class DeviceListWidget(QWidget):
-    def __init__(self, devices: List[Device] = None, *args, **kwargs):
+class DeviceListEditorView(QWidget):
+    dataChanged = Signal()
+
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._devices = devices or []
-
         self.setUpUI()
-        self.setUpReactivity()
+
+        self.updateDeleteDeviceButton()
 
     def setUpUI(self):
-        deviceTabWidget = QTabWidget()
-        deviceTabWidget.setMovable(True)
-        self.tabWidget = deviceTabWidget
+        tabWidget = QTabWidget()
+        tabWidget.setMovable(True)
+        self.tabWidget = tabWidget
 
         addDeviceButton = QPushButton()
         addDeviceButton.setText("Add device")
         self.addDeviceButton = addDeviceButton
 
         deleteDeviceButton = QPushButton()
-        deleteDeviceButton.setObjectName("DeleteDeviceButton")
         deleteDeviceButton.setText("Delete device")
-        deleteDeviceButton.setStyleSheet(
-            """\
-QPushButton#DeleteDeviceButton {
-    background-color: rgb(190, 30, 30);
-}
-QPushButton#DeleteDeviceButton:enabled {
-    color: white;
-}
-        """
-        )
+        deleteDeviceButton.setObjectName("deleteDeviceButton")
         self.deleteDeviceButton = deleteDeviceButton
-        self._updateDeleteButton()
 
         buttonsLayout = QHBoxLayout()
-        buttonsLayout.addStretch(1)
         buttonsLayout.addWidget(addDeviceButton)
         buttonsLayout.addWidget(deleteDeviceButton)
 
         layout = QVBoxLayout()
-        layout.addWidget(deviceTabWidget)
+        layout.addWidget(tabWidget)
         layout.addLayout(buttonsLayout)
         self.setLayout(layout)
 
-    def _updateDeleteButton(self):
+    def updateDeleteDeviceButton(self):
         self.deleteDeviceButton.setEnabled(self.tabWidget.count() >= 2)
 
-    def setUpReactivity(self):
-        def addNewDevice():
-            nWidgets = self.tabWidget.count()
-            name = f"New device {str(nWidgets + 1)}"
+    def addDevice(self, device: Device):
+        deviceEditor = DeviceEditor(device)
+        deviceEditor.dataChanged.connect(lambda: self.dataChanged.emit())
+        self.tabWidget.addTab(deviceEditor, device.name)
 
-            widget = DeviceWidget(_init_name=name)
-            self.tabWidget.addTab(widget, name)
+        index = self.tabWidget.indexOf(deviceEditor)
+        deviceEditor.nameLineEdit.textChanged.connect(
+            lambda: self.tabWidget.setTabText(index, deviceEditor.nameLineEdit.text())
+        )
+        self.tabWidget.setCurrentIndex(index)
 
-            def updateTabText(name: str) -> None:
-                index = self.tabWidget.indexOf(widget)
-                self.tabWidget.setTabText(index, name)
+        self.updateDeleteDeviceButton()
 
-            widget.nameLabelEdit.textChanged.connect(lambda name: updateTabText(name))
+    def deleteCurrentDevice(self):
+        index = self.tabWidget.currentIndex()
+        self.tabWidget.removeTab(index)
 
-            index = self.tabWidget.indexOf(widget)
-            self.tabWidget.setCurrentIndex(index)
-
-            self._updateDeleteButton()
-
-        self.addDeviceButton.clicked.connect(lambda: addNewDevice())
-
-        def deleteDevice():
-            index = self.tabWidget.currentIndex()
-            name = self.tabWidget.tabText(index)
-
-            response = showDeleteDialog(
-                title=f"Delete {name}?", text=f"Are you sure you want to delete {name}?"
-            )
-            if response == QMessageBox.Yes:
-                self.tabWidget.removeTab(index)
-
-                self._updateDeleteButton()
-
-        self.deleteDeviceButton.clicked.connect(lambda: deleteDevice())
+        self.updateDeleteDeviceButton()
 
 
-if __name__ == "__main__":
-    import sys
-    from PySide2.QtWidgets import QApplication
+class DeviceListEditor(QObject):
+    log = logging.getLogger(__name__)
 
-    app = QApplication()
-    widget = DeviceListWidget()
-    widget.show()
-    sys.exit(app.exec_())
+    dataChanged = Signal()
+
+    def __init__(self, devices: List[Device], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.devices = devices
+
+        self.view = DeviceListEditorView()
+        for device in self.devices:
+            self.view.addDevice(device)
+
+        self.view.addDeviceButton.clicked.connect(lambda: self.addDevice())
+        self.view.deleteDeviceButton.clicked.connect(lambda: self.deleteCurrentDevice())
+        self.view.dataChanged.connect(lambda: self.dataChanged.emit())
+
+        tabBar: QTabBar = self.view.tabWidget.tabBar()
+        tabBar.tabMoved.connect(lambda to_, from_: self.moveDevice(to_, from_))
+        self.tabBar = tabBar
+
+    def addDevice(self):
+        count = self.view.tabWidget.count() + 1
+        device = Device(name=f"New device {count}")
+        self.devices.append(device)
+        self.view.addDevice(device)
+
+        self.dataChanged.emit()
+        self.log.info("New device added")
+
+    def deleteCurrentDevice(self):
+        index = self.view.tabWidget.currentIndex()
+        name = self.view.tabWidget.tabText(index) or "the current device"
+
+        response = showYesNoDialog(
+            parent=self.view,
+            title=f"Delete {name}?",
+            text=f"Are you sure you want to delete {name}?",
+        )
+        if response == QMessageBox.Yes:
+            del self.devices[index]
+            self.view.deleteCurrentDevice()
+
+            self.dataChanged.emit()
+            self.log.info("Device deleted")
+
+    def moveDevice(self, to_: int, from_: int):
+        (self.devices[to_], self.devices[from_]) = (
+            self.devices[from_],
+            self.devices[to_],
+        )
+
+        self.dataChanged.emit()
+        self.log.info(f"Device moved to {to_} from {from_}")
