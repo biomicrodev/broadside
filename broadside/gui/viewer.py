@@ -8,7 +8,7 @@ from PySide2.QtWidgets import QApplication, QMessageBox, QFileDialog, QWidget
 
 from .components.analysis import AnalysisEditor
 from .components.annotation import AnnotationEditor
-from .components.editor import BaseEditor
+from .components.editor import Editor
 from .components.mainwindow import MainWindow
 from .components.navigation import Navigator
 from .components.project import ProjectEditor
@@ -44,8 +44,8 @@ class Viewer:
 
         self.theme = theme
 
-        self.currentEditor: Optional[Type[BaseEditor]] = None
-        self.editors: List[Type[BaseEditor]] = [
+        self.currentEditor: Optional[Type[Editor]] = None
+        self.editors: List[Type[Editor]] = [
             ProjectEditor,
             AnnotationEditor,
             AnalysisEditor,
@@ -127,11 +127,11 @@ class Viewer:
         self.view.editorViewContainer.addWidget(self.currentEditor.view)
 
         # when editor is complete, let viewer know
-        def updateIsComplete():
-            self.navigator.model.isComplete = self.currentEditor.isComplete
+        def updateIsValid():
+            self.navigator.model.isValid = self.currentEditor.isValid
 
-        self.currentEditor.isCompleteChanged.connect(updateIsComplete)
-        updateIsComplete()
+        self.currentEditor.isValidChanged.connect(updateIsValid)
+        updateIsValid()
 
         # if project editor changes project, let viewer know
         if isinstance(self.currentEditor, ProjectEditor):

@@ -3,29 +3,31 @@ from PySide2.QtCore import QObject, Signal
 from ..models.project import ProjectModel
 
 
-class BaseEditor(QObject):
+class Editor(QObject):
     name = ""
 
-    isCompleteChanged = Signal()
+    isValidChanged = Signal()
     dataChanged = Signal()
 
-    def __init__(self, model: ProjectModel, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._isComplete: bool = False
+        self._isValid: bool = False
 
-        self.model = model
         self.view = None
 
     @property
-    def isComplete(self) -> bool:
-        return self._isComplete
+    def isValid(self) -> bool:
+        return self._isValid
 
-    @isComplete.setter
-    def isComplete(self, val: bool) -> None:
-        if self.isComplete is not val:
-            self._isComplete = val
-            self.isCompleteChanged.emit()
+    @isValid.setter
+    def isValid(self, val: bool) -> None:
+        if self.isValid is not val:
+            self._isValid = val
+            self.isValidChanged.emit()
 
     def beforeDelete(self) -> None:
+        pass
+
+    def validate(self) -> None:
         pass

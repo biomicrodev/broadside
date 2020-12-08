@@ -11,7 +11,7 @@ class Serializable:
         raise NotImplementedError
 
     @classmethod
-    def from_dict(cls, dct: Dict[str, str]):
+    def from_dict(cls, dct: Dict[str, Any]):
         """
         Convert dict to object. This is where conversion to the proper types is
         important, and that is up to the individual class, which is why this is a

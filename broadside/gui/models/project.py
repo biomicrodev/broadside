@@ -132,13 +132,13 @@ class ProjectModel(QObject):
 
             self.log.info(f"Settings read from {str(filepath)}")
         else:
-            self.log.info("Settings file not found")
+            self.log.info("Settings file not found; values set to default")
 
         self._description = settings.get("description", "")
         self._devices = [Device.from_dict(d) for d in settings.get("devices", [])]
-        # self._sampleGroups = [
-        #     SampleGroup.from_dict(s) for s in settings.get("sampleGroups", [])
-        # ]
+        self._sampleGroups = [
+            SampleGroup.from_dict(s) for s in settings.get("sample_groups", [])
+        ]
 
         self.pathChanged.emit()
 
@@ -172,11 +172,15 @@ class ProjectModel(QObject):
             self.log.info("Path is none, so not saving")
             return
 
+        if not self.isStale:
+            self.log.info("Up to date, so not saving")
+            return
+
         settings = {
             "name": self.name,
             "description": self.description,
             "devices": [d.as_dict() for d in self.devices],
-            # "sampleGroups": [s.as_dict() for s in self.sampleGroups],
+            "sample_groups": [s.as_dict() for s in self.sampleGroups],
         }
 
         filepath = self.path / self.filename

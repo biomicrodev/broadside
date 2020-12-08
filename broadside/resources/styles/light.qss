@@ -22,7 +22,7 @@ QMenuBar::item {
 }
 
 QMenuBar::item:pressed {
-    background-color: hsl(0, 0%, 20%);
+    background-color: hsl(0, 0%, 80%);
 }
 
 QPushButton#selectProjectButton {
@@ -39,9 +39,15 @@ QLabel#noProjectSelectedLabel {
     color: hsl(0, 0%, 80%);
 }
 
-QPushButton#deleteDeviceButton {
+QPushButton#deleteDeviceButton,
+QPushButton#deleteFormulationButton,
+QPushButton#deleteSampleGroupButton,
+QPushButton#deleteSampleButton {
     background-color: rgb(190, 30, 30);
 }
-QPushButton#deleteDeviceButton:enabled {
+QPushButton#deleteDeviceButton:enabled,
+QPushButton#deleteFormulationButton:enabled,
+QPushButton#deleteSampleGroupButton:enabled,
+QPushButton#deleteSampleButton:enabled {
     color: white;
 }

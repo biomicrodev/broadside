@@ -20,7 +20,7 @@ class NavigatorModel(QObject):
         At the beginning of the sequence
     last: bool
         At the end of the sequence
-    isComplete: bool
+    isValid: bool
         Whether current step is complete or not
     """
 
@@ -28,21 +28,21 @@ class NavigatorModel(QObject):
 
     # model to view
     indexChanged = Signal()
-    isCompleteChanged = Signal()
+    isValidChanged = Signal()
 
-    def __init__(self, n: int, isComplete: bool = False, *args, **kwargs):
+    def __init__(self, n: int, isValid: bool = False, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._n = n
         self._index = 0
-        self._isComplete = isComplete
+        self._isValid = isValid
 
         # logging
         self.indexChanged.connect(
             lambda: self.log.info(f"Index changed to {self.index}")
         )
-        self.isCompleteChanged.connect(
-            lambda: self.log.info(f"isComplete changed to {self.isComplete}")
+        self.isValidChanged.connect(
+            lambda: self.log.info(f"isValid changed to {self.isValid}")
         )
 
     @property
@@ -53,12 +53,12 @@ class NavigatorModel(QObject):
     def index(self, val: int) -> None:
         val = min(max(val, 0), self._n - 1)  # being lenient here
 
-        if val > self.index and self.isComplete:
+        if val > self.index and self.isValid:
             self._index = val
             self.indexChanged.emit()
             return
 
-        if val > self.index and not self.isComplete:
+        if val > self.index and not self.isValid:
             self.log.warning("Attempting to step ahead when incomplete")
 
         if val < self.index:
@@ -67,14 +67,14 @@ class NavigatorModel(QObject):
             return
 
     @property
-    def isComplete(self) -> bool:
-        return self._isComplete
+    def isValid(self) -> bool:
+        return self._isValid
 
-    @isComplete.setter
-    def isComplete(self, val: bool) -> None:
-        if self.isComplete is not val:
-            self._isComplete = val
-            self.isCompleteChanged.emit()
+    @isValid.setter
+    def isValid(self, val: bool) -> None:
+        if self.isValid is not val:
+            self._isValid = val
+            self.isValidChanged.emit()
 
     @property
     def first(self) -> bool:

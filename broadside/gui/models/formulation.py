@@ -9,13 +9,7 @@ class Formulation(Serializable):
     headers = ["Level", "Angle", "Name"]
     types = [str, float, str]
 
-    def __init__(
-        self,
-        *,
-        level: Union[str, int] = "",
-        angle: Optional[float] = None,
-        name: str = ""
-    ):
+    def __init__(self, *, level: Union[str, int], angle: Optional[float], name: str):
         self._level: str = str(level)
         self._angle: float = angle
         self._name: str = name
@@ -57,5 +51,9 @@ class Formulation(Serializable):
 
     @classmethod
     def from_dict(cls, dct: Dict[str, Any]):
-        """Serialization code. Awkward, but works (at least for now)"""
-        return cls(level=dct["level"], angle=float(dct["angle"]), name=dct["name"])
+        level = dct.get("level", "")
+        angle = dct.get("angle", None)
+        angle = float(angle) if angle is not None else None
+        name = dct.get("name", "")
+
+        return cls(level=level, angle=angle, name=name)

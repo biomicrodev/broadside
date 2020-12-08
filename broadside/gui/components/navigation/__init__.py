@@ -20,12 +20,10 @@ class Navigator:
         self.view.backButton.clicked.connect(lambda: self.model.move_back())
         self.view.nextButton.clicked.connect(lambda: self.model.move_next())
 
-        self.model.isCompleteChanged.connect(lambda: self.refresh())
+        self.model.isValidChanged.connect(lambda: self.refresh())
         self.model.indexChanged.connect(lambda: self.refresh())
 
     def refresh(self):
         self.view.backButton.setEnabled(not self.model.first)
-        self.view.nextButton.setEnabled(
-            (not self.model.last) and (self.model.isComplete)
-        )
-        self.view.setState(index=self.model.index, isComplete=self.model.isComplete)
+        self.view.nextButton.setEnabled((not self.model.last) and (self.model.isValid))
+        self.view.setState(index=self.model.index, isComplete=self.model.isValid)

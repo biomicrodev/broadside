@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Broadside")
         self.setMinimumHeight(500)
-        self.setMinimumWidth(600)
+        self.setMinimumWidth(700)
         self.resize(1200, 800)  # w, h
 
         self.initMenuBar()
