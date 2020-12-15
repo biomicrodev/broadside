@@ -29,21 +29,22 @@ def cprofile(
 
     """
 
-    if msg is None:
-        msg = "Time to run"
-
     def outer(func: Callable) -> Callable:
         def inner(*args, **kwargs) -> Any:
             pr = cProfile.Profile()
             pr.enable()
 
-            result = func(*args, **kwargs)
-
-            pr.disable()
-            print(msg)
-            pstats.Stats().strip_dirs().sort_stats(sort_by).print_stats(n_lines)
-
-            return result
+            try:
+                result = func(*args, **kwargs)
+            except Exception:
+                raise
+            else:
+                return result
+            finally:
+                pr.disable()
+                if msg:
+                    print(msg)
+                pstats.Stats().strip_dirs().sort_stats(sort_by).print_stats(n_lines)
 
         return inner
 
