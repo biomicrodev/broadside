@@ -58,23 +58,20 @@ class SampleIndicator(Serializable):
 
 
 @dataclass
-class SampleGroup(Serializable):
+class Block(Serializable):
     name: str
-    cohorts: List[str]
     samples: List[Sample]
 
     def as_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
-            "cohorts": self.cohorts,
-            "samples": self.samples,
+            "samples": [s.as_dict() for s in self.samples],
         }
 
     @classmethod
     def from_dict(cls, dct: Dict[str, Any]):
         name = dct.get("name", "Unnamed")
-        cohorts = dct.get("cohorts", [])
         samples = dct.get("samples", [])
         samples = [Sample.from_dict(s) for s in samples]
 
-        return cls(name=name, cohorts=cohorts, samples=samples)
+        return cls(name=name, samples=samples)

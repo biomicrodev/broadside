@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from PySide2.QtCore import Signal, Qt, QObject
+from PySide2.QtCore import Signal, Qt
 from PySide2.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -14,11 +14,12 @@ from PySide2.QtWidgets import (
     QComboBox,
     QTabBar,
     QMessageBox,
+    QScrollArea,
 )
 
 from .payload import FormulationTableEditorView
 from ..editor import Editor
-from ..utils import showYesNoDialog
+from ..utils import showYesNoDialog, updateStyle
 from ...color import Color
 from ...models.device import (
     Device,
@@ -43,6 +44,7 @@ class DeviceEditorView(QWidget):
         nameLabel = QLabel("Name:")
         nameLineEdit = QLineEdit()
         nameLineEdit.setMinimumWidth(150)
+        nameLineEdit.setObjectName("deviceNameLineEdit")
         nameLabel.setBuddy(nameLineEdit)
         self.nameLineEdit = nameLineEdit
 
@@ -77,7 +79,7 @@ class DeviceEditorView(QWidget):
         self.angularDirectionComboBox = angDirCombo
 
         formulationTableEditorView = FormulationTableEditorView(self.device.payload)
-        formulationTableEditorView.setMaximumWidth(600)
+        formulationTableEditorView.setMinimumHeight(500)
         self.formulationTableEditorView = formulationTableEditorView
 
         layout = QGridLayout()
@@ -101,12 +103,21 @@ class DeviceEditorView(QWidget):
         layout.setRowStretch(3, 0)
 
         layout.addWidget(formulationTableEditorView, 4, 0, 1, 2)
-        layout.setRowStretch(4, 0)
+        layout.setRowStretch(4, 1)
 
         layout.addWidget(QWidget(), 5, 0)
         layout.setRowStretch(5, 1)
 
-        self.setLayout(layout)
+        parentWidget = QWidget()
+        parentWidget.setLayout(layout)
+        parentWidget.setMinimumWidth(600)
+
+        scrollArea = QScrollArea()
+        scrollArea.setWidget(parentWidget)
+
+        parentLayout = QVBoxLayout()
+        parentLayout.addWidget(scrollArea, 1)
+        self.setLayout(parentLayout)
 
     def setUpReactivity(self):
         def onNameChange():
@@ -138,6 +149,10 @@ class DeviceEditorView(QWidget):
             lambda: onLongitudinalDirectionChange()
         )
 
+        self.formulationTableEditorView.dataChanged.connect(
+            lambda: self.dataChanged.emit()
+        )
+
         # populate fields
         self.nameLineEdit.setText(self.device.name)
         longOrient = self.device.longitudinalOrientation
@@ -166,10 +181,6 @@ class DeviceEditorView(QWidget):
             )
         else:
             self.angularDirectionComboBox.setCurrentText(angDir.value)
-
-        self.formulationTableEditorView.dataChanged.connect(
-            lambda: self.dataChanged.emit()
-        )
 
 
 class DeviceListEditorView(QWidget):
@@ -212,17 +223,19 @@ class DeviceListEditorView(QWidget):
         deviceEditor.dataChanged.connect(lambda: self.dataChanged.emit())
         self.tabWidget.addTab(deviceEditor, device.name)
 
-        index = self.tabWidget.indexOf(deviceEditor)
-        deviceEditor.nameLineEdit.textChanged.connect(
-            lambda: self.tabWidget.setTabText(index, deviceEditor.nameLineEdit.text())
-        )
-        self.tabWidget.setCurrentIndex(index)
+        def updateTabText(w: DeviceEditorView) -> None:
+            index = self.tabWidget.indexOf(w)
+            self.tabWidget.setTabText(index, w.nameLineEdit.text())
 
+        deviceEditor.nameLineEdit.textChanged.connect(
+            lambda: updateTabText(deviceEditor)
+        )
+        updateTabText(deviceEditor)
+        self.tabWidget.setCurrentWidget(deviceEditor)
         self.updateDeleteDeviceButton()
 
     def deleteDevice(self, index: int) -> None:
         self.tabWidget.removeTab(index)
-
         self.updateDeleteDeviceButton()
 
 
@@ -290,11 +303,11 @@ class DeviceListEditor(Editor):
         self.log.info(f"Device moved to {to_} from {from_}")
 
     def validate(self):
+        # are device names unique?
         names = [d.name for d in self.devices]
         namesAsSet = set(names)
 
-        self.isValid = len(namesAsSet) == len(names)
-
+        # which devices conflict?
         duplicates = set()
         for name in namesAsSet:
             indexes = [i for i, _name in enumerate(names) if _name == name]
@@ -302,7 +315,26 @@ class DeviceListEditor(Editor):
                 duplicates.update(indexes)
 
         for index in range(self.tabBar.count()):
+            editor: DeviceEditorView = self.view.tabWidget.widget(index)
+            nameLineEdit = editor.nameLineEdit
+
             if index in duplicates:
                 self.tabBar.setTabTextColor(index, Color.Red.qc())
+                nameLineEdit.setProperty("valid", "false")
             else:
                 self.tabBar.setTabTextColor(index, Color.Black.qc())
+                nameLineEdit.setProperty("valid", "true")
+
+            updateStyle(nameLineEdit)
+
+        # are formulations for each device unique? (check level and angle)
+        payloadsValid = True
+        for device in self.devices:
+            payload = device.payload
+            levelsAngles = [(f.level, f.angle) for f in payload]
+            levelsAnglesAsSet = set(levelsAngles)
+            if len(levelsAngles) != len(levelsAnglesAsSet):
+                payloadsValid = False
+                break
+
+        self.isValid = (len(namesAsSet) == len(names)) and payloadsValid

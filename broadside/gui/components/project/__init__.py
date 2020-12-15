@@ -5,7 +5,7 @@ from PySide2.QtCore import Signal
 
 from .device import DeviceListEditor
 from .image import ImageListEditor
-from .samplegroup import SampleGroupListEditor
+from .block import BlockListEditor
 from .view import ProjectView
 from ..editor import Editor
 from ...models.project import ProjectModel
@@ -27,7 +27,7 @@ class ProjectEditor(Editor):
 
         # editors
         self.deviceListEditor = None
-        self.sampleGroupListEditor = None
+        self.blockListEditor = None
         self.imageListEditor = None
 
         # reactivity
@@ -65,9 +65,17 @@ class ProjectEditor(Editor):
         deviceListEditor.dataChanged.connect(lambda: self.dataChanged.emit())
         self.deviceListEditor = deviceListEditor
 
-        sampleGroupListEditor = SampleGroupListEditor(self.model.sampleGroups)
-        sampleGroupListEditor.dataChanged.connect(lambda: self.dataChanged.emit())
-        self.sampleGroupListEditor = sampleGroupListEditor
+        blockListEditor = BlockListEditor(self.model.blocks)
+        blockListEditor.dataChanged.connect(lambda: self.dataChanged.emit())
+        # how to best hook up functionality in one widget that is dependent on a
+        # far-away widget...
+        def updateDeviceNames():
+            names = [d.name for d in self.model.devices]
+            blockListEditor.view.updateDeviceNames(names)
+
+        self.dataChanged.connect(lambda: updateDeviceNames())
+        updateDeviceNames()
+        self.blockListEditor = blockListEditor
 
         imageListEditor = ImageListEditor()
         # imageListEditor.dataChanged.connect(lambda: self.dataChanged.emit())
@@ -75,7 +83,7 @@ class ProjectEditor(Editor):
         self.view.onProjectSelected(
             description=self.model.description,
             deviceListView=deviceListEditor.view,
-            sampleGroupListView=sampleGroupListEditor.view,
+            blockListView=blockListEditor.view,
             imageListView=imageListEditor.view,
         )
 
@@ -88,17 +96,19 @@ class ProjectEditor(Editor):
         self.view.descriptionTextEdit.textChanged.connect(lambda: setDescriptionText())
 
     def validate(self):
+        isDeviceListEditorValid = (
+            self.deviceListEditor.isValid
+            if self.deviceListEditor is not None
+            else False
+        )
+
+        isBlockListEditorValid = (
+            self.blockListEditor.isValid if self.blockListEditor is not None else False
+        )
+
         self.isValid = (
-            (
-                self.deviceListEditor.isValid
-                if self.deviceListEditor is not None
-                else False
-            )
-            & (
-                self.sampleGroupListEditor.isValid
-                if self.sampleGroupListEditor is not None
-                else False
-            )
+            isDeviceListEditorValid
+            & isBlockListEditorValid
             & (self.model.path is not None)
         )
 

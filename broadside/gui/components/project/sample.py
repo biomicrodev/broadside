@@ -1,5 +1,6 @@
+import copy
 import logging
-from typing import List, Any
+from typing import List, Any, Tuple
 
 from PySide2.QtCore import (
     Signal,
@@ -8,8 +9,10 @@ from PySide2.QtCore import (
     Qt,
     QItemSelectionModel,
     QRect,
+    QAbstractItemModel,
+    QAbstractListModel,
 )
-from PySide2.QtGui import QPainter, QPen
+from PySide2.QtGui import QPainter, QPen, QMouseEvent
 from PySide2.QtWidgets import (
     QWidget,
     QTableView,
@@ -19,37 +22,99 @@ from PySide2.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
     QStyledItemDelegate,
-    QLineEdit,
     QStyleOptionViewItem,
+    QComboBox,
+    QLineEdit,
+    QStyleOptionComboBox,
 )
 from natsort import natsort_keygen
 
-from .. import CellState
+from .. import CellState, LineEditItemDelegate
 from ...color import Color
-from ...models.samplegroup import Sample
+from ...models.block import Sample
+
+
+def getCohorts(samples: List[Sample]) -> List[str]:
+    cohorts = []
+    for sample in samples:
+        cohorts.extend(sample.cohorts.keys())
+    cohorts = list(set(cohorts))
+    return cohorts
 
 
 class SampleTableModel(QAbstractTableModel):
-    def __init__(self, samples: List[Sample], cohorts: List[str], *args, **kwargs):
+    def __init__(self, samples: List[Sample], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.samples = samples
-        self.cohorts = cohorts
+
+    def getItem(self, index: QModelIndex) -> Tuple[str, Any]:
+        row = index.row()
+        column = index.column()
+
+        if column < len(Sample.keys):
+            key = Sample.keys[column]
+            value = getattr(self.samples[row], key)
+        else:
+            cohorts = getCohorts(self.samples)
+            key = cohorts[column]
+            value = self.samples[row].cohorts[key]
+        return key, value
+
+    def setItem(self, index: QModelIndex, value: Any) -> bool:
+        row = index.row()
+        column = index.column()
+
+        if column < len(Sample.keys):
+            key = Sample.keys[column]
+            type_ = Sample.types[column]
+
+            try:
+                value = type_(value)
+                if getattr(self.samples[row], key) == value:
+                    return False
+
+                setattr(self.samples[row], key, value)
+                self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
+            except ValueError:
+                return False
+            else:
+                return True
+
+        else:
+            cohorts = getCohorts(self.samples)
+            key = cohorts[column]
+            type_ = str
+            try:
+                self.samples[row].cohorts[key] = type_(value)
+                self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
+            except ValueError:
+                return False
+            else:
+                return True
 
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
         if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
-            column = index.column()
-            if column < len(Sample.keys):
-                key = Sample.keys[column]
-                value = getattr(self.samples[index.row()], key)
-            else:
-                key = self.cohorts[column]
-                value = self.samples[index.row()].cohorts[key]
+            key, value = self.getItem(index)
+            return str(value) if value is not None else ""
 
-            if value is None:
-                return ""
+        elif role == Qt.BackgroundRole:
+            key, value = self.getItem(index)
+            if key == "name":
+                # which sample names are not unique?
+                name = value
+                otherNames = [
+                    s.name for i, s in enumerate(self.samples) if i != index.row()
+                ]
+                if name in otherNames:
+                    return CellState.Invalid
+                else:
+                    return CellState.Valid
+
+            if (value == "") or (value is None):
+                return CellState.Invalid
             else:
-                return str(value)
+                return CellState.Valid
 
         elif role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
@@ -61,6 +126,8 @@ class SampleTableModel(QAbstractTableModel):
             if not index.isValid():
                 return False
 
+            return self.setItem(index, value)
+
         return False
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
@@ -70,7 +137,8 @@ class SampleTableModel(QAbstractTableModel):
         return len(self.samples)
 
     def columnCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
-        return len(Sample.keys) + len(self.cohorts)
+        cohorts = getCohorts(self.samples)
+        return len(Sample.keys) + len(cohorts)
 
     def headerData(
         self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole = None
@@ -78,11 +146,16 @@ class SampleTableModel(QAbstractTableModel):
         if role == Qt.DisplayRole:
             # column headers
             if orientation == Qt.Horizontal:
-                return (list(Sample.headers) + self.cohorts)[section]
+                cohorts = getCohorts(self.samples)
+                return (list(Sample.headers) + cohorts)[section]
 
             # row headers
             elif orientation == Qt.Vertical:
                 return section + 1  # section is 0-indexed
+
+        elif role == Qt.EditRole:
+            if orientation == Qt.Horizontal:
+                return Qt.ItemIsEditable
 
     def addSample(self):
         self.layoutAboutToBeChanged.emit()
@@ -94,54 +167,99 @@ class SampleTableModel(QAbstractTableModel):
 
         self.layoutChanged.emit()
 
-    def removeSample(self, index):
+    def removeSample(self, index: int) -> None:
         self.layoutAboutToBeChanged.emit()
 
-        self.beginRemoveRows(QModelIndex(), index, index)
+        self.beginRemoveRows(QModelIndex(), index, index + 1)
         del self.samples[index]
         self.endRemoveRows()
 
-        modelIndex = self.createIndex(index, 0)
-        self.changePersistentIndex(modelIndex, modelIndex)
+        # modelIndex = self.createIndex(index, 0)
+        # self.changePersistentIndex(modelIndex, modelIndex)
+        self.layoutChanged.emit()
+
+    def addMetadata(self) -> None:
+        self.layoutAboutToBeChanged.emit()
+
+        key = "Metadata1"
+
+        index = self.columnCount()
+        self.beginInsertColumns(QModelIndex, index, index)
+        for sample in self.samples:
+            sample.cohorts[key] = ""
+        self.endInsertColumns()
+
         self.layoutChanged.emit()
 
 
-class LineEditItemDelegate(QStyledItemDelegate):
+class DeviceNamesModel(QAbstractListModel):
+    def __init__(self, names: List[str] = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.names = names or []
+
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
+        if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
+            return str(self.names[index.row()])
+
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignCenter
+
+    def updateNames(self, names: List[str]) -> None:
+        if self.names == names:
+            return
+
+        self.layoutAboutToBeChanged.emit()
+
+        self.names.clear()
+        self.names.extend(names)
+
+        self.layoutChanged.emit()
+
+    def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
+        return len(self.names)
+
+
+class DeviceComboBoxDelegate(QStyledItemDelegate):
+    """
+    Annoying things to fix here:
+    1. When editing the QComboBox delegate's selection, it's not centered
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model = None
+
+    def setModel(self, model: QAbstractListModel) -> None:
+        self.model = model
+
     def createEditor(
         self, parent: QWidget, option: QStyleOptionViewItem, index: QModelIndex
     ) -> QWidget:
-        editor = QLineEdit(parent=parent)
-        editor.setAlignment(Qt.AlignCenter)
+        editor = QComboBox(parent=parent)
+
+        if self.model is not None:
+            editor.setModel(self.model)
+
         return editor
-
-    def paint(
-        self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex
-    ) -> None:
-        super().paint(painter, option, index)
-
-        cellState: CellState = index.data(Qt.BackgroundRole)
-        if cellState == CellState.Invalid:
-            padding = 0
-            x = option.rect.x() + padding
-            y = option.rect.y() + padding
-            w = option.rect.width() - 1 - padding
-            h = option.rect.height() - 1 - padding
-
-            pen = QPen()
-            pen.setColor(Color.Red.qc())
-            pen.setWidth(1)
-
-            painter.setPen(pen)
-            painter.drawRect(QRect(x, y, w, h))
 
 
 class SampleTableView(QTableView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # self.setEditTriggers(QAbstractItemView.AllEditTriggers)
+
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         horizontalHeader: QHeaderView = self.horizontalHeader()
         horizontalHeader.setStretchLastSection(True)
+
+        lineEditDelegate = LineEditItemDelegate(parent=self)
+        self.setItemDelegateForColumn(0, lineEditDelegate)
+
+        deviceComboBoxDelegate = DeviceComboBoxDelegate(parent=self)
+        self.deviceComboBoxDelegate = deviceComboBoxDelegate
+        self.setItemDelegateForColumn(1, deviceComboBoxDelegate)
 
 
 class SampleTableEditorView(QWidget):
@@ -149,15 +267,28 @@ class SampleTableEditorView(QWidget):
 
     dataChanged = Signal()
 
-    def __init__(self, samples: List[Sample], cohorts: List[str], *args, **kwargs):
+    def __init__(self, samples: List[Sample], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.model = SampleTableModel(samples=samples, cohorts=cohorts)
+        self.model = SampleTableModel(samples)
         self.model.dataChanged.connect(lambda _: self.dataChanged.emit())
         self.model.layoutChanged.connect(lambda: self.dataChanged.emit())
 
         self.view = SampleTableView()
         self.view.setModel(self.model)
+
+        deviceNamesModel = DeviceNamesModel()
+        self.deviceNamesModel = deviceNamesModel
+        self.view.deviceComboBoxDelegate.setModel(deviceNamesModel)
+
+        def updateButtons():
+            indexes = self.view.selectedIndexes()
+            nRows = self.model.rowCount()
+            indexes = [index for index in indexes if index.row() < nRows]
+            self.deleteSampleButton.setEnabled(len(indexes) > 0)
+
+        selectionModel: QItemSelectionModel = self.view.selectionModel()
+        selectionModel.selectionChanged.connect(lambda: updateButtons())
 
         def addSample():
             self.model.addSample()
@@ -192,22 +323,17 @@ class SampleTableEditorView(QWidget):
         deleteSampleButton.clicked.connect(lambda: deleteSample())
         self.deleteSampleButton = deleteSampleButton
 
-        def selectionChanged():
-            indexes = self.view.selectedIndexes()
-            nRows = self.model.rowCount()
-            indexes = [index for index in indexes if index.row() < nRows]
-            self.deleteSampleButton.setEnabled(len(indexes) > 0)
-
-        selectionModel: QItemSelectionModel = self.view.selectionModel()
-        selectionModel.selectionChanged.connect(lambda: selectionChanged())
-
         natsort = natsort_keygen(
             key=lambda s: (s.name is None, s.deviceName is None, s.name, s.deviceName)
         )
 
         def sort():
+            # copying like this is okay since this list won't ever be more than 40
+            # samples
+            oldSamples = copy.copy(self.model.samples)
             self.model.samples.sort(key=natsort)
-            self.model.layoutChanged.emit()
+            if self.model.samples != oldSamples:
+                self.model.layoutChanged.emit()
 
         sortSamplesButton = QPushButton()
         sortSamplesButton.setText("Sort")

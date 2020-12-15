@@ -24,6 +24,8 @@ def run():
 
     log.info("QApp started")
 
-    Viewer(app=app, theme="light")
+    Viewer(
+        app=app, theme="light", path=Path("/home/sebastian/limbo/projects/test_project")
+    )
 
     sys.exit(app.exec_())

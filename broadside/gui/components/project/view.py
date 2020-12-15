@@ -101,7 +101,7 @@ class ProjectView(QWidget):
         parentWidget = QWidget()
         parentWidget.setLayout(layout)
         parentWidget.setContentsMargins(0, 0, 0, 0)
-        parentWidget.setFixedWidth(200)
+        parentWidget.setFixedWidth(250)
         return parentWidget
 
     def onProjectSelected(
@@ -109,7 +109,7 @@ class ProjectView(QWidget):
         *,
         description: str,
         deviceListView: QWidget,
-        sampleGroupListView: QWidget,
+        blockListView: QWidget,
         imageListView: QWidget
     ) -> None:
         descriptionTextEdit = QPlainTextEdit()
@@ -128,7 +128,7 @@ class ProjectView(QWidget):
         tabWidget.setObjectName("settingsWidget")
         tabWidget.setTabPosition(QTabWidget.North)
         tabWidget.addTab(deviceListView, "Devices")
-        tabWidget.addTab(sampleGroupListView, "Sample Groups")
+        tabWidget.addTab(blockListView, "Blocks")
         tabWidget.addTab(imageListView, "Images")
 
         settingsLayout = QVBoxLayout()

@@ -1,6 +1,7 @@
 name: broadside
 channels:
   - conda-forge
+  - defaults
 dependencies:
   - black>=20.7
   - dask>=2.30
@@ -12,7 +13,7 @@ dependencies:
   - pyside2>=5.13
   - pytest
   - python>=3.8
-  - qtpynodeeditor>=0.2
+  - qtpynodeeditor
   - scikit-image
   - tifffile
   - tqdm>=4.53

@@ -43,3 +43,8 @@ def showYesNoDialog(
     box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
     box.setDefaultButton(QMessageBox.No)
     return box.exec_()
+
+
+def updateStyle(w: QWidget) -> None:
+    w.style().unpolish(w)
+    w.style().polish(w)
