@@ -1,4 +1,5 @@
 import cProfile
+import functools
 import pstats
 from typing import Callable, Any
 
@@ -30,6 +31,7 @@ def cprofile(
     """
 
     def outer(func: Callable) -> Callable:
+        @functools.wraps(func)
         def inner(*args, **kwargs) -> Any:
             pr = cProfile.Profile()
             pr.enable()
