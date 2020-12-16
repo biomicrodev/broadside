@@ -16,7 +16,7 @@ from zarr import Group
 
 namespace = "{http://www.leica-microsystems.com/scn/2010/10/01}"
 
-Point2D = Tuple[float, float]
+PointYX = Tuple[float, float]  # to match numpy
 
 
 def str2int(s: str) -> int:
@@ -28,13 +28,11 @@ class Pyramid(NamedTuple):
     A Pyramid is a set of arrays that form a geometric sequence in image space.
     The microns per pixel value is the scale factor for the base array.
     The offset is in physical units.
-
-    Note that Point2Ds are ordered YX, to fit with numpy's ordering.
     """
 
     layers: List[da.Array]
-    mpp: Point2D
-    offset: Point2D
+    mpp: PointYX
+    offset: PointYX
 
 
 class Image(NamedTuple):
@@ -182,10 +180,7 @@ def normalize(path: Path) -> Optional[Image]:
 
         scn_metadata = file.scn_metadata
 
-    # file format (svs or scn)
-    file_format = list(flags)[0]
-
-    if file_format == "svs":
+    if "svs" in flags:
         # get metadata
         metadata: Dict[str, Any] = parse_svs_metadata(pages[0].description)
 
@@ -208,7 +203,7 @@ def normalize(path: Path) -> Optional[Image]:
         return Image(
             name=path.name,
             dtype=image.dtype,
-            file_format=file_format,
+            file_format="svs",
             flags=flags,
             label=label,
             pyramids=pyramids,
@@ -217,7 +212,7 @@ def normalize(path: Path) -> Optional[Image]:
             axes=axes,
         )
 
-    elif file_format == "scn":
+    elif "scn" in flags:
         # get metadata
         metadata: ET.Element = ET.fromstring(scn_metadata)
 
@@ -246,7 +241,7 @@ def normalize(path: Path) -> Optional[Image]:
             return Image(
                 name=path.name,
                 dtype=series[0].dtype,
-                file_format=file_format,
+                file_format="scn",
                 flags=flags,
                 label=label,
                 pyramids=pyramids,
@@ -265,7 +260,7 @@ def normalize(path: Path) -> Optional[Image]:
             return Image(
                 name=path.name,
                 dtype=series[0].dtype,
-                file_format=file_format,
+                file_format="scn",
                 flags=flags,
                 label=label,
                 pyramids=pyramids[1:],  # first pyramid is background pyramid
