@@ -74,6 +74,7 @@ class FormulationTableModel(QAbstractTableModel):
 
             key = Formulation.keys[index.column()]
             type_ = Formulation.types[index.column()]
+
             try:
                 setattr(self.formulations[index.row()], key, type_(value))
                 self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)

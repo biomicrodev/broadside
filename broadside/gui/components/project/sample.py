@@ -8,11 +8,8 @@ from PySide2.QtCore import (
     QModelIndex,
     Qt,
     QItemSelectionModel,
-    QRect,
-    QAbstractItemModel,
     QAbstractListModel,
 )
-from PySide2.QtGui import QPainter, QPen, QMouseEvent
 from PySide2.QtWidgets import (
     QWidget,
     QTableView,
@@ -24,13 +21,10 @@ from PySide2.QtWidgets import (
     QStyledItemDelegate,
     QStyleOptionViewItem,
     QComboBox,
-    QLineEdit,
-    QStyleOptionComboBox,
 )
 from natsort import natsort_keygen
 
 from .. import CellState, LineEditItemDelegate
-from ...color import Color
 from ...models.block import Sample
 
 
@@ -125,6 +119,17 @@ class SampleTableModel(QAbstractTableModel):
         if role == Qt.EditRole:
             if not index.isValid():
                 return False
+
+            key, _ = self.getItem(index)
+            if key == "name":
+                name = value
+                otherNames = [
+                    s.name for i, s in enumerate(self.samples) if i != index.row()
+                ]
+                if name in otherNames:
+                    return False
+                else:
+                    return self.setItem(index, value)
 
             return self.setItem(index, value)
 

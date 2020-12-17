@@ -52,7 +52,7 @@ QPushButton#deleteSampleButton:enabled {
     color: white;
 }
 
-QLineEdit[valid='false'] {
+QLineEdit[valid=false] {
     padding: 2px 0;
     border: 0.5px solid rgb(190, 30, 30);
     border-radius: 2px;
