@@ -27,6 +27,7 @@ class Editor(QObject):
             self.isValidChanged.emit()
 
     def beforeDelete(self) -> None:
+        # TODO: this isn't probably needed now
         pass
 
     def validate(self) -> None:

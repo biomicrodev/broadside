@@ -2,15 +2,13 @@ import json
 import logging
 from enum import Enum
 from pathlib import Path
-from pprint import pprint
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from PySide2.QtCore import Signal, QObject
 
-from . import Serializable
+from .block import Block
 from .device import Device
 from .image import Image
-from .block import Block
 
 
 class SaveAction(Enum):
@@ -66,7 +64,7 @@ class ProjectModel(QObject):
         self._name = ""
         self._description = ""
         self._devices: List[Device] = []
-        self._sampleGroups: List[Block] = []
+        self._blocks: List[Block] = []
         self._images: List[Image] = []
         self._taskGraph = {}
 
@@ -136,9 +134,7 @@ class ProjectModel(QObject):
 
         self._description = settings.get("description", "")
         self._devices = [Device.from_dict(d) for d in settings.get("devices", [])]
-        self._sampleGroups = [
-            Block.from_dict(s) for s in settings.get("sample_groups", [])
-        ]
+        self._blocks = [Block.from_dict(s) for s in settings.get("blocks", [])]
 
         self.pathChanged.emit()
 
@@ -162,7 +158,7 @@ class ProjectModel(QObject):
 
     @property
     def blocks(self) -> List[Block]:
-        return self._sampleGroups
+        return self._blocks
 
     def save(self) -> None:
         """
@@ -180,7 +176,7 @@ class ProjectModel(QObject):
             "name": self.name,
             "description": self.description,
             "devices": [d.as_dict() for d in self.devices],
-            "sample_groups": [s.as_dict() for s in self.blocks],
+            "blocks": [s.as_dict() for s in self.blocks],
         }
 
         filepath = self.path / self.filename

@@ -42,13 +42,15 @@ QLabel#noProjectSelectedLabel {
 QPushButton#deleteDeviceButton,
 QPushButton#deleteFormulationButton,
 QPushButton#deleteBlockButton,
-QPushButton#deleteSampleButton {
+QPushButton#deleteSampleButton,
+QPushButton#deleteCohortButton {
     background-color: rgb(190, 30, 30);
 }
 QPushButton#deleteDeviceButton:enabled,
 QPushButton#deleteFormulationButton:enabled,
 QPushButton#deleteBlockButton:enabled,
-QPushButton#deleteSampleButton:enabled {
+QPushButton#deleteSampleButton:enabled,
+QPushButton#deleteCohortButton:enabled {
     color: white;
 }
 

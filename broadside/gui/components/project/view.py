@@ -131,6 +131,9 @@ class ProjectView(QWidget):
         tabWidget.addTab(blockListView, "Blocks")
         tabWidget.addTab(imageListView, "Images")
 
+        # whenever user clicks on a tab, refresh it
+        tabWidget.tabBarClicked.connect(lambda index: tabWidget.widget(index).refresh())
+
         settingsLayout = QVBoxLayout()
         settingsLayout.addWidget(descriptionBox, stretch=0)
         settingsLayout.addWidget(tabWidget, stretch=1)

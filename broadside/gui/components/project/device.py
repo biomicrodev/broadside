@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Any, Set
 
 from PySide2.QtCore import Signal, Qt
 from PySide2.QtWidgets import (
@@ -238,6 +238,24 @@ class DeviceListEditorView(QWidget):
         self.tabWidget.removeTab(index)
         self.updateDeleteDeviceButton()
 
+    def styleInvalidTabs(self, indexes: Set[int]) -> None:
+        tabBar: QTabBar = self.tabWidget.tabBar()
+        for index in range(tabBar.count()):
+            editor: DeviceEditorView = self.tabWidget.widget(index)
+            nameLineEdit = editor.nameLineEdit
+
+            if index in indexes:
+                tabBar.setTabTextColor(index, Color.Red.qc())
+                nameLineEdit.setProperty("valid", "false")
+            else:
+                tabBar.setTabTextColor(index, Color.Black.qc())
+                nameLineEdit.setProperty("valid", "true")
+
+            updateStyle(nameLineEdit)
+
+    def refresh(self):
+        pass
+
 
 class DeviceListEditor(Editor):
     log = logging.getLogger(__name__)
@@ -302,39 +320,53 @@ class DeviceListEditor(Editor):
         self.dataChanged.emit()
         self.log.info(f"Device moved to {to_} from {from_}")
 
-    def validate(self):
-        # are device names unique?
-        names = [d.name for d in self.devices]
-        namesAsSet = set(names)
+    def validate(self) -> None:
+        invalidTabs: Set[int] = set()
 
-        # which devices conflict?
-        duplicates = set()
-        for name in namesAsSet:
-            indexes = [i for i, _name in enumerate(names) if _name == name]
-            if len(indexes) > 1:
-                duplicates.update(indexes)
+        isDeviceNamesValid = True
+        for i, device in enumerate(self.devices):
+            name = device.name
+            if (name == "") or (name is None):
+                isDeviceNamesValid = False
+                invalidTabs.add(i)
 
-        for index in range(self.tabBar.count()):
-            editor: DeviceEditorView = self.view.tabWidget.widget(index)
-            nameLineEdit = editor.nameLineEdit
+        isPayloadsValid = True
+        for i, device in enumerate(self.devices):
+            payload = device.payload
+            for f in payload:
+                if (
+                    (f.level == "")
+                    or (f.level is None)
+                    or (f.angle == "")
+                    or (f.angle is None)
+                    or (f.name == "")
+                    or (f.name is None)
+                ):
+                    isPayloadsValid = False
+                    invalidTabs.add(i)
 
-            if index in duplicates:
-                self.tabBar.setTabTextColor(index, Color.Red.qc())
-                nameLineEdit.setProperty("valid", "false")
-            else:
-                self.tabBar.setTabTextColor(index, Color.Black.qc())
-                nameLineEdit.setProperty("valid", "true")
-
-            updateStyle(nameLineEdit)
-
-        # are formulations for each device unique? (check level and angle)
-        payloadsValid = True
-        for device in self.devices:
+        isFormulationsUnique = True
+        for i, device in enumerate(self.devices):
             payload = device.payload
             levelsAngles = [(f.level, f.angle) for f in payload]
             levelsAnglesAsSet = set(levelsAngles)
             if len(levelsAngles) != len(levelsAnglesAsSet):
-                payloadsValid = False
-                break
+                isFormulationsUnique = False
+                invalidTabs.add(i)
 
-        self.isValid = (len(namesAsSet) == len(names)) and payloadsValid
+        names = [d.name for d in self.devices]
+        namesAsSet = set(names)
+        isDeviceNamesUnique = len(names) == len(namesAsSet)
+
+        for name in namesAsSet:
+            indexes = [i for i, _name in enumerate(names) if _name == name]
+            if len(indexes) > 1:
+                invalidTabs.update(indexes)
+        self.view.styleInvalidTabs(invalidTabs)
+
+        self.isValid = (
+            isDeviceNamesValid
+            and isPayloadsValid
+            and isFormulationsUnique
+            and isDeviceNamesUnique
+        )

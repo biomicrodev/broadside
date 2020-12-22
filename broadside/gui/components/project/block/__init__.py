@@ -1,35 +1,40 @@
 import logging
-from typing import List
+from typing import List, Set
 
-from PySide2.QtCore import Signal, Qt
+from PySide2.QtCore import Qt, Signal
 from PySide2.QtWidgets import (
     QWidget,
+    QGridLayout,
     QLabel,
     QVBoxLayout,
+    QHBoxLayout,
     QLineEdit,
-    QGridLayout,
+    QScrollArea,
     QTabWidget,
     QPushButton,
-    QHBoxLayout,
     QTabBar,
     QMessageBox,
-    QScrollArea,
 )
+from natsort import natsorted
 
-from .sample import SampleTableEditorView
-from ..editor import Editor
-from ..utils import showYesNoDialog, updateStyle
-from ...color import Color
-from ...models.block import Block, Sample
+from .blockdiagram import BlockDiagramEditorView
+from ..sample import SampleTableEditorView
+from ...editor import Editor
+from ...utils import updateStyle, showYesNoDialog
+from ....color import Color
+from ....models.block import Block, Sample
+from ....models.device import Device
+from ....models.project import ProjectModel
 
 
 class BlockEditorView(QWidget):
     dataChanged = Signal()
 
-    def __init__(self, block: Block, *args, **kwargs):
+    def __init__(self, block: Block, devices: List[Device], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.block = block
+        self.devices = devices
 
         self.setUpUI()
         self.setUpReactivity()
@@ -41,30 +46,47 @@ class BlockEditorView(QWidget):
         nameLabel.setBuddy(nameLineEdit)
         self.nameLineEdit = nameLineEdit
 
-        sampleTableEditorView = SampleTableEditorView(self.block.samples)
-        sampleTableEditorView.setMaximumWidth(600)
+        sampleTableEditorView = SampleTableEditorView(self.block)
+        sampleTableEditorView.setMinimumWidth(500)
+        sampleTableEditorView.setMinimumHeight(500)
         self.sampleTableEditorView = sampleTableEditorView
 
-        layout = QGridLayout()
-        layout.setColumnStretch(0, 0)
-        layout.setColumnStretch(1, 1)
+        blockDiagramEditor = BlockDiagramEditorView(
+            block=self.block, devices=self.devices
+        )
+        blockDiagramEditor.setMinimumWidth(800)
+        blockDiagramEditor.setMinimumHeight(400)
+        self.blockDiagramEditor = blockDiagramEditor
 
-        layout.addWidget(nameLabel, 0, 0, Qt.AlignRight)
-        layout.addWidget(nameLineEdit, 0, 1, Qt.AlignLeft)
-        layout.setRowStretch(0, 0)
+        gridLayout = QGridLayout()
+        gridLayout.setColumnStretch(0, 0)
+        gridLayout.setColumnStretch(1, 1)
+        gridLayout.setVerticalSpacing(20)
 
-        layout.addWidget(sampleTableEditorView, 1, 0, 1, 2)
-        layout.setRowStretch(1, 0)
+        gridLayout.addWidget(nameLabel, 0, 0, Qt.AlignRight)
+        gridLayout.addWidget(nameLineEdit, 0, 1, Qt.AlignLeft)
+        gridLayout.setRowStretch(0, 0)
 
-        layout.addWidget(QWidget(), 2, 0)
-        layout.setRowStretch(2, 1)
+        gridLayout.addWidget(sampleTableEditorView, 1, 0, 1, 2)
+        gridLayout.setRowStretch(1, 0)
+
+        # gridLayout.addWidget(blockDiagramEditor, 2, 0, 1, 2)
+        # gridLayout.setRowStretch(2, 0)
+
+        gridLayout.addWidget(QWidget(), 2, 0)
+        gridLayout.setRowStretch(2, 1)
+
+        layout = QHBoxLayout()
+        layout.addLayout(gridLayout, 0)
+        layout.addSpacing(30)
+        layout.addWidget(blockDiagramEditor, 0)
 
         parentWidget = QWidget()
         parentWidget.setLayout(layout)
-        parentWidget.setMinimumWidth(500)
 
         scrollArea = QScrollArea()
         scrollArea.setWidget(parentWidget)
+        scrollArea.setWidgetResizable(False)
 
         parentLayout = QVBoxLayout()
         parentLayout.addWidget(scrollArea, 1)
@@ -77,8 +99,11 @@ class BlockEditorView(QWidget):
             self.dataChanged.emit()
 
         self.nameLineEdit.textChanged.connect(lambda: onNameChange())
-
-        self.sampleTableEditorView.dataChanged.connect(lambda: self.dataChanged.emit())
+        self.sampleTableEditorView.dataChanged.connect(self.dataChanged.emit)
+        self.blockDiagramEditor.dataChanged.connect(self.dataChanged.emit)
+        self.sampleTableEditorView.dataChanged.connect(
+            self.blockDiagramEditor.dataChangePushed.emit
+        )
 
         # populate fields
         self.nameLineEdit.setText(self.block.name)
@@ -120,8 +145,8 @@ class BlockListEditorView(QWidget):
     def updateDeleteBlockButton(self):
         self.deleteBlockButton.setEnabled(self.tabWidget.count() >= 2)
 
-    def addBlock(self, block: Block) -> None:
-        blockEditor = BlockEditorView(block)
+    def addBlock(self, block: Block, devices: List[Device]) -> None:
+        blockEditor = BlockEditorView(block, devices)
         blockEditor.dataChanged.connect(lambda: self.dataChanged.emit())
         self.tabWidget.addTab(blockEditor, block.name)
 
@@ -149,14 +174,36 @@ class BlockListEditorView(QWidget):
                 if sample.deviceName not in names:
                     sample.deviceName = names[0]
 
+    def styleInvalidTabs(self, indexes: Set[int]) -> None:
+        tabBar: QTabBar = self.tabWidget.tabBar()
+        for index in range(tabBar.count()):
+            editor: BlockEditorView = self.tabWidget.widget(index)
+            nameLineEdit = editor.nameLineEdit
+
+            if index in indexes:
+                tabBar.setTabTextColor(index, Color.Red.qc())
+                nameLineEdit.setProperty("valid", "false")
+            else:
+                tabBar.setTabTextColor(index, Color.Black.qc())
+                nameLineEdit.setProperty("valid", "true")
+
+            updateStyle(nameLineEdit)
+
+    def refresh(self):
+        for index in range(self.tabWidget.count()):
+            blockEditor: BlockEditorView = self.tabWidget.widget(index)
+            blockEditor.blockDiagramEditor.dataChangePushed.emit()
+
 
 class BlockListEditor(Editor):
     log = logging.getLogger(__name__)
 
-    def __init__(self, blocks: List[Block], *args, **kwargs):
+    dataChangedFromModel = Signal()  # don't like the name
+
+    def __init__(self, model: ProjectModel, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.blocks = blocks
+        self.model = model
 
         # set up view reactivity
         self.view = BlockListEditorView()
@@ -165,8 +212,8 @@ class BlockListEditor(Editor):
         self.view.dataChanged.connect(lambda: self.dataChanged.emit())
 
         # initialize view
-        for block in self.blocks:
-            self.view.addBlock(block)
+        for block in self.model.blocks:
+            self.view.addBlock(block, self.model.devices)
         self.view.tabWidget.setCurrentIndex(0)
 
         tabBar: QTabBar = self.view.tabWidget.tabBar()
@@ -182,8 +229,8 @@ class BlockListEditor(Editor):
     def addBlock(self):
         count = self.view.tabWidget.count() + 1
         block = Block.from_dict({"name": f"New block {count}"})
-        self.blocks.append(block)
-        self.view.addBlock(block)
+        self.model.blocks.append(block)
+        self.view.addBlock(block, self.model.devices)
 
         self.dataChanged.emit()
         self.log.info("New block added")
@@ -198,53 +245,47 @@ class BlockListEditor(Editor):
             text=f"Are you sure you want to delete {name}?",
         )
         if response == QMessageBox.Yes:
-            del self.blocks[index]
+            del self.model.blocks[index]
             self.view.deleteBlock(index)
 
             self.dataChanged.emit()
             self.log.info("Block deleted")
 
     def moveBlock(self, to_: int, from_: int) -> None:
-        (self.blocks[to_], self.blocks[from_]) = (
-            self.blocks[from_],
-            self.blocks[to_],
+        (self.model.blocks[to_], self.model.blocks[from_]) = (
+            self.model.blocks[from_],
+            self.model.blocks[to_],
         )
 
         self.dataChanged.emit()
         self.log.info(f"Block moved to {to_} from {from_}")
 
     def validate(self):
-        # are block names unique?
-        names = [s.name for s in self.blocks]
-        namesAsSet = set(names)
+        invalidTabs: Set[int] = set()
 
-        # which block names conflict?
-        duplicates = set()
-        for name in namesAsSet:
-            indexes = [i for i, _name in enumerate(names) if _name == name]
-            if len(indexes) > 1:
-                duplicates.update(indexes)
+        isBlockNamesValid = True
+        for i, block in enumerate(self.model.blocks):
+            name = block.name
+            if (name == "") or (name is None):
+                isBlockNamesValid = False
+                invalidTabs.add(i)
 
-        for index in range(self.tabBar.count()):
-            editor: BlockEditorView = self.view.tabWidget.widget(index)
-            nameLineEdit = editor.nameLineEdit
-
-            if index in duplicates:
-                self.tabBar.setTabTextColor(index, Color.Red.qc())
-                nameLineEdit.setProperty("valid", "false")
-            else:
-                self.tabBar.setTabTextColor(index, Color.Black.qc())
-                nameLineEdit.setProperty("valid", "true")
-
-            updateStyle(nameLineEdit)
-
-        # are sample names for each block unique?
-        blockNamesValid = True
-        for block in self.blocks:
+        isSampleNamesValid = True
+        for i, block in enumerate(self.model.blocks):
             names = [g.name for g in block.samples]
             namesAsSet = set(names)
             if len(names) != len(namesAsSet):
-                blockNamesValid = False
-                break
+                isSampleNamesValid = False
+                invalidTabs.add(i)
 
-        self.isValid = (len(namesAsSet) == len(names)) and blockNamesValid
+        names = [s.name for s in self.model.blocks]
+        namesAsSet = set(names)
+        isBlockNamesUnique = len(names) == len(namesAsSet)
+
+        for name in namesAsSet:
+            indexes = [i for i, _name in enumerate(names) if _name == name]
+            if len(indexes) > 1:
+                invalidTabs.update(indexes)
+        self.view.styleInvalidTabs(invalidTabs)
+
+        self.isValid = isBlockNamesUnique and isBlockNamesValid and isSampleNamesValid

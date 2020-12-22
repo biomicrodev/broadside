@@ -3,9 +3,9 @@ from pathlib import Path
 
 from PySide2.QtCore import Signal
 
+from .block import BlockListEditor
 from .device import DeviceListEditor
 from .image import ImageListEditor
-from .block import BlockListEditor
 from .view import ProjectView
 from ..editor import Editor
 from ...models.project import ProjectModel
@@ -65,8 +65,9 @@ class ProjectEditor(Editor):
         deviceListEditor.dataChanged.connect(lambda: self.dataChanged.emit())
         self.deviceListEditor = deviceListEditor
 
-        blockListEditor = BlockListEditor(self.model.blocks)
+        blockListEditor = BlockListEditor(self.model)
         blockListEditor.dataChanged.connect(lambda: self.dataChanged.emit())
+
         # how to best hook up functionality in one widget that is dependent on a
         # far-away widget...
         def updateDeviceNames():

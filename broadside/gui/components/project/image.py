@@ -13,6 +13,9 @@ class ImageListEditorView(QWidget):
 
         self.setLayout(layout)
 
+    def refresh(self):
+        pass
+
 
 class ImageListEditor:
     def __init__(self):
