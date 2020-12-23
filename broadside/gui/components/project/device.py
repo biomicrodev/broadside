@@ -1,5 +1,5 @@
 import logging
-from typing import List, Any, Set
+from typing import List, Set
 
 from PySide2.QtCore import Signal, Qt
 from PySide2.QtWidgets import (

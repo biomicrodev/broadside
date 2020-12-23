@@ -106,7 +106,7 @@ class FormulationTableModel(QAbstractTableModel):
             elif orientation == Qt.Vertical:
                 return section + 1  # section is 0-indexed
 
-    def addFormulation(self):
+    def addFormulation(self) -> None:
         self.layoutAboutToBeChanged.emit()
 
         index = self.rowCount()
@@ -114,18 +114,15 @@ class FormulationTableModel(QAbstractTableModel):
         self.formulations.append(Formulation.from_dict({}))
         self.endInsertRows()
 
-        # self.changePersistentIndex(QModelIndex(), QModelIndex())
         self.layoutChanged.emit()
 
-    def removeFormulation(self, index):
+    def removeFormulation(self, index: int) -> None:
         self.layoutAboutToBeChanged.emit()
 
         self.beginRemoveRows(QModelIndex(), index, index)
         del self.formulations[index]
         self.endRemoveRows()
 
-        # modelIndex = self.createIndex(index, 0)
-        # self.changePersistentIndex(modelIndex, modelIndex)
         self.layoutChanged.emit()
 
 
@@ -149,7 +146,7 @@ class FormulationTableEditorView(QWidget):
     def __init__(self, formulations: List[Formulation], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.model = FormulationTableModel(formulations=formulations)
+        self.model = FormulationTableModel(formulations)
         self.model.dataChanged.connect(lambda _: self.dataChanged.emit())
         self.model.layoutChanged.connect(lambda: self.dataChanged.emit())
 
@@ -170,7 +167,7 @@ class FormulationTableEditorView(QWidget):
 
             row = self.model.rowCount() - 1
             column = 0
-            modelIndex = self.model.createIndex(row, column)
+            modelIndex: QModelIndex = self.model.createIndex(row, column)
             self.view.setCurrentIndex(modelIndex)
             self.view.setFocus()
 
@@ -187,7 +184,7 @@ class FormulationTableEditorView(QWidget):
 
             self.model.removeFormulation(row)
 
-            modelIndex = self.model.createIndex(row, column)
+            modelIndex: QModelIndex = self.model.createIndex(row, column)
             self.view.setCurrentIndex(modelIndex)
             self.view.setFocus()
 
