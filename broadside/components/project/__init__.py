@@ -8,7 +8,7 @@ from .device import DeviceListEditor
 from .image import ImageListEditor
 from .view import ProjectView
 from ..editor import Editor
-from ...models.project import ProjectModel
+from ..session import Session
 
 
 class ProjectEditor(Editor):
@@ -17,9 +17,10 @@ class ProjectEditor(Editor):
     name = "Project"
 
     # signals to parent
-    projectSelectRequested = Signal()
+    # projectSelectRequested = Signal()
+    pathChangeRequested = Signal()
 
-    def __init__(self, model: ProjectModel, *args, **kwargs):
+    def __init__(self, model: Session, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.model = model
@@ -32,7 +33,7 @@ class ProjectEditor(Editor):
 
         # reactivity
         self.view.selectProjectButton.clicked.connect(
-            lambda: self.projectSelectRequested.emit()
+            lambda: self.pathChangeRequested.emit()
         )
         self.model.pathChanged.connect(lambda: self.refreshView())
         self.model.pathChanged.connect(lambda: self.validate())
@@ -42,8 +43,8 @@ class ProjectEditor(Editor):
         self.validate()
 
         # logging
-        self.projectSelectRequested.connect(
-            lambda: self.log.info("projectSelectRequested emitted")
+        self.pathChangeRequested.connect(
+            lambda: self.log.info("pathChangeRequested emitted"),
         )
 
     def refreshView(self) -> None:
@@ -67,16 +68,16 @@ class ProjectEditor(Editor):
 
         blockListEditor = BlockListEditor(self.model)
         blockListEditor.dataChanged.connect(lambda: self.dataChanged.emit())
+        self.blockListEditor = blockListEditor
 
         # how to best hook up functionality in one widget that is dependent on a
         # far-away widget...
         def updateDeviceNames():
             names = [d.name for d in self.model.devices]
-            blockListEditor.view.updateDeviceNames(names)
+            self.blockListEditor.view.updateDeviceNames(names)
 
         self.dataChanged.connect(lambda: updateDeviceNames())
         updateDeviceNames()
-        self.blockListEditor = blockListEditor
 
         imageListEditor = ImageListEditor()
         # imageListEditor.dataChanged.connect(lambda: self.dataChanged.emit())

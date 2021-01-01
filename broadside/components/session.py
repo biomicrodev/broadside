@@ -1,26 +1,18 @@
 import json
 import logging
-from enum import Enum
 from pathlib import Path
 from typing import Optional, List
 
-from PySide2.QtCore import Signal, QObject
+from PySide2.QtCore import QObject, Signal
 
-from .block import Block
-from .device import Device
-from .image import Image
-
-
-class SaveAction(Enum):
-    Save = "SAVE"
-    Cancel = "CANCEL"
-    Discard = "DISCARD"
+from ..models.block import Block
+from ..models.device import Device
+from ..models.image import Image
+from ..models.state import State
 
 
-class ProjectModel(QObject):
+class Session(QObject):
     """
-    Model containing domain logic, including workflow management.
-
     Parameters
     ----------
     filename : str
@@ -59,6 +51,8 @@ class ProjectModel(QObject):
         super().__init__(*args, **kwargs)
 
         self._isStale = False
+
+        # self.state: Optional[State] = None
 
         self._path: Optional[Path] = None
         self._name = ""
@@ -131,6 +125,7 @@ class ProjectModel(QObject):
             self.log.info(f"Settings read from {str(filepath)}")
         else:
             self.log.info("Settings file not found; values set to default")
+            self.isStale = True
 
         self._description = settings.get("description", "")
         self._devices = [Device.from_dict(d) for d in settings.get("devices", [])]

@@ -1,15 +1,12 @@
-"""
-NamedTuple was picked as the class in order to enforce immutability, as the contents
-reflect proprietary file formats and cannot be changed.
-"""
-
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Any, Set, NamedTuple, Optional, Tuple
 
 import dask.array as da
-import numpy
+import numpy as np
 import zarr
+from shapely.geometry import Polygon
 from tifffile import TiffFile, TiffPageSeries, TiffPage
 from tifffile.tifffile import ZarrTiffStore
 from zarr import Group
@@ -23,41 +20,64 @@ def str2int(s: str) -> int:
     return int(round(float(s)))
 
 
+@dataclass
+class ObjectGroup:
+    name: str
+    coords: np.ndarray
+    polygons: List[Polygon]
+
+
 class Pyramid(NamedTuple):
     """
     A Pyramid is a set of arrays that form a geometric sequence in image space.
     The microns per pixel value is the scale factor for the base array.
     The offset is in physical units.
+
+    NamedTuple was picked as the class in order to enforce immutability, as the contents
+    reflect proprietary file formats and cannot be changed.
     """
 
     layers: List[da.Array]
     mpp: PointYX
     offset: PointYX
+    object_groups: List[ObjectGroup] = []
 
 
-class Image(NamedTuple):
-    """
-    An Image is a list of Pyramids, with an optional background Pyramid.
-    The background Pyramid appears in microscopes that obtain a low-resolution image of
-    the entire slide, often during a tissue detection step.
-    """
-
-    name: str
-    dtype: numpy.dtype
+class PyramidGroup(NamedTuple):
+    dtype: np.dtype
     channel_index: int
     n_channels: int
     axes: str
     file_format: str
     flags: Set[str]
 
-    label: numpy.ndarray
+    label: Optional[np.ndarray]
     pyramids: List[Pyramid]
+    background: Optional[Pyramid] = None
 
-    background: Pyramid = None
 
-    @classmethod
-    def from_file(cls, path: Path):
-        return normalize(path)
+@dataclass
+class Annotation:
+    name: str
+    polygon: Polygon = None
+
+
+@dataclass
+class Image:
+    """
+    An Image is a list of Pyramids, with an optional background Pyramid.
+    The background Pyramid appears in microscopes that obtain a low-resolution image of
+    the entire slide, often during a tissue detection step.
+    """
+
+    filepath: Path
+    pixels: PyramidGroup
+    block_name: Optional[str] = None
+    panel_name: Optional[str] = None
+    annotations: List[Annotation] = None
+
+    def __post_init__(self):
+        self.annotations = self.annotations or []
 
 
 def parse_svs_metadata(s: str):
@@ -185,7 +205,7 @@ def normalize(path: Path) -> Optional[Image]:
         metadata: Dict[str, Any] = parse_svs_metadata(pages[0].description)
 
         # get label
-        label: numpy.ndarray = next(s for s in series if s.name == "Label").asarray()
+        label: np.ndarray = next(s for s in series if s.name == "Label").asarray()
 
         # get pyramids
         image: TiffPageSeries = next(s for s in series if s.name == "Baseline")
@@ -200,17 +220,17 @@ def normalize(path: Path) -> Optional[Image]:
         axes: str = image.axes
         channel_index: int = list(axes).index("S")
 
-        return Image(
-            name=path.name,
+        pixels = PyramidGroup(
             dtype=image.dtype,
+            channel_index=channel_index,
+            n_channels=image.shape[channel_index],
+            axes=axes,
             file_format="svs",
             flags=flags,
             label=label,
             pyramids=pyramids,
-            n_channels=image.shape[channel_index],
-            channel_index=channel_index,
-            axes=axes,
         )
+        return Image(filepath=path, pixels=pixels)
 
     elif "scn" in flags:
         # get metadata
@@ -238,17 +258,17 @@ def normalize(path: Path) -> Optional[Image]:
             n_channels = series[0].shape[channel_index]
             pyramids = get_scn_pyramids(path, metadata, series)
 
-            return Image(
-                name=path.name,
+            pixels = PyramidGroup(
                 dtype=series[0].dtype,
+                channel_index=channel_index,
+                n_channels=n_channels,
+                axes=axes,
                 file_format="scn",
                 flags=flags,
                 label=label,
                 pyramids=pyramids,
-                n_channels=n_channels,
-                channel_index=channel_index,
-                axes=axes,
             )
+            return Image(filepath=path, pixels=pixels)
 
         else:
             # is brightfield image (until we start using other modalities)
@@ -257,15 +277,15 @@ def normalize(path: Path) -> Optional[Image]:
             n_channels = series[0].shape[channel_index]
             pyramids = get_scn_pyramids(path, metadata, series)
 
-            return Image(
-                name=path.name,
+            pixels = PyramidGroup(
                 dtype=series[0].dtype,
+                channel_index=channel_index,
+                n_channels=n_channels,
+                axes=axes,
                 file_format="scn",
                 flags=flags,
                 label=label,
                 pyramids=pyramids[1:],  # first pyramid is background pyramid
-                n_channels=n_channels,
-                channel_index=channel_index,
-                axes=axes,
                 background=pyramids[0],  # background pyramid
             )
+            return Image(filepath=path, pixels=pixels)

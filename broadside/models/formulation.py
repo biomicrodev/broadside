@@ -1,7 +1,7 @@
-import math
 from typing import Optional, Dict, Union, Any
 
-from . import Serializable
+from .serializable import Serializable
+from ..utils import norm_angle
 
 
 class Formulation(Serializable):
@@ -28,12 +28,7 @@ class Formulation(Serializable):
 
     @angle.setter
     def angle(self, val: float) -> None:
-        # in degrees!
-        # `math.fmod` not guaranteed to return a positive value
-        val = math.fmod(val, 360.0)
-        if val < 0.0:
-            val += 360.0
-        self._angle = round(val)
+        self._angle = norm_angle(val)
 
     @property
     def name(self) -> str:
@@ -52,8 +47,10 @@ class Formulation(Serializable):
     @classmethod
     def from_dict(cls, dct: Dict[str, Any]):
         level = dct.get("level", "")
+
         angle = dct.get("angle", None)
         angle = float(angle) if angle is not None else None
+
         name = dct.get("name", "")
 
         return cls(level=level, angle=angle, name=name)

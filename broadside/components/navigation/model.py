@@ -1,6 +1,6 @@
 import logging
 
-from PySide2.QtCore import Signal, QObject
+from PySide2.QtCore import QObject, Signal
 
 
 class NavigatorModel(QObject):
@@ -20,29 +20,28 @@ class NavigatorModel(QObject):
         At the beginning of the sequence
     last: bool
         At the end of the sequence
-    isValid: bool
+    is_valid: bool
         Whether current step is complete or not
     """
 
     log = logging.getLogger(__name__)
 
-    # model to view
     indexChanged = Signal()
     isValidChanged = Signal()
 
-    def __init__(self, n: int, isValid: bool = False, *args, **kwargs):
+    def __init__(self, n: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._n = n
         self._index = 0
-        self._isValid = isValid
+        self._isValid = False
 
         # logging
         self.indexChanged.connect(
-            lambda: self.log.info(f"Index changed to {self.index}")
+            lambda: self.log.info(f"Index changed to {self.index}"),
         )
         self.isValidChanged.connect(
-            lambda: self.log.info(f"isValid changed to {self.isValid}")
+            lambda: self.log.info(f"isValid changed to {self.isValid}"),
         )
 
     @property
@@ -84,8 +83,8 @@ class NavigatorModel(QObject):
     def last(self) -> bool:
         return self.index == (self._n - 1)
 
-    def move_next(self) -> None:
+    def moveNext(self) -> None:
         self.index += 1
 
-    def move_back(self) -> None:
+    def moveBack(self) -> None:
         self.index -= 1

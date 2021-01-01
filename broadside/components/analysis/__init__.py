@@ -2,7 +2,7 @@ import logging
 
 from .view import AnalysisView
 from ..editor import Editor
-from ...models.project import ProjectModel
+from ..session import Session
 
 
 class AnalysisEditor(Editor):
@@ -10,7 +10,7 @@ class AnalysisEditor(Editor):
 
     name = "Analysis"
 
-    def __init__(self, model: ProjectModel, *args, **kwargs):
+    def __init__(self, model: Session, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.model = model

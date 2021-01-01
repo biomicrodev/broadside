@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
-from . import Serializable
+from .serializable import Serializable
 
 
 @dataclass
@@ -33,9 +33,6 @@ class Channel(Serializable):
 class Panel(Serializable):
     name: str
     channels: List[Channel]
-
-    def __post__init__(self):
-        self.channels = self.channels or []
 
     def as_dict(self) -> Dict[str, Any]:
         return {"name": self.name, "channels": [c.as_dict() for c in self.channels]}

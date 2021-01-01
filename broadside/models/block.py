@@ -1,8 +1,8 @@
-import math
 from dataclasses import dataclass
 from typing import Dict, Any, List, Tuple, Optional
 
-from . import Serializable
+from .serializable import Serializable
+from ..utils import norm_angle
 
 Point2D = Tuple[float, float]
 
@@ -17,8 +17,8 @@ class Vector(Serializable):
         return self._pos
 
     @pos.setter
-    def pos(self, pos: Point2D) -> None:
-        self._pos = pos
+    def pos(self, val: Point2D) -> None:
+        self._pos = val
 
     @property
     def angle(self) -> Optional[float]:
@@ -26,12 +26,7 @@ class Vector(Serializable):
 
     @angle.setter
     def angle(self, val: float) -> None:
-        # in degrees!
-        # `math.fmod` not guaranteed to return a positive value
-        val = math.fmod(val, 360.0)
-        if val < 0.0:
-            val += 360.0
-        self._angle = round(val)
+        self._angle = norm_angle(val)
 
     def as_dict(self) -> Dict[str, Any]:
         return {"pos": self.pos, "angle": self.angle}
@@ -95,11 +90,44 @@ class Sample(Serializable):
         return cls(name=name, deviceName=deviceName, cohorts=cohorts)
 
 
+class SampleVector(Serializable):
+    def __init__(self, *, sample: Sample, pos: Point2D, angle: float):
+        self._sample = sample
+        self._pos = pos
+        self._angle = norm_angle(angle)
+
+    @property
+    def sample(self) -> Sample:
+        return self._sample
+
+    @sample.setter
+    def sample(self, val: Sample) -> None:
+        self._sample = val
+
+    @property
+    def pos(self) -> Point2D:
+        return self._pos
+
+    @pos.setter
+    def pos(self, val: Point2D) -> None:
+        self._pos = val
+
+    @property
+    def angle(self) -> float:
+        return self._angle
+
+    @angle.setter
+    def angle(self, val: float) -> None:
+        self._angle = norm_angle(val)
+
+
 @dataclass
 class Block(Serializable):
     name: str
     samples: List[Sample]
     vectors: List[Vector]
+
+    # TODO: refactor samples into sample_vectors
 
     def as_dict(self) -> Dict[str, Any]:
         return {

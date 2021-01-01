@@ -1,7 +1,17 @@
 import cProfile
 import functools
+import math
 import pstats
 from typing import Callable, Any
+
+
+def norm_angle(val: float) -> float:
+    # in degrees!
+    # `math.fmod` not guaranteed to return a positive value
+    val = math.fmod(val, 360.0)
+    if val < 0.0:
+        val += 360.0
+    return round(val)
 
 
 def cprofile(
@@ -46,7 +56,7 @@ def cprofile(
                 pr.disable()
                 if msg:
                     print(msg)
-                pstats.Stats().strip_dirs().sort_stats(sort_by).print_stats(n_lines)
+                pstats.Stats(pr).strip_dirs().sort_stats(sort_by).print_stats(n_lines)
 
         return inner
 

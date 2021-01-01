@@ -15,5 +15,6 @@ dependencies:
   - python>=3.8
   - qtpynodeeditor
   - scikit-image
+  - shapely
   - tifffile
   - tqdm>=4.53

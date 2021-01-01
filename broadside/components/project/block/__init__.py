@@ -15,16 +15,15 @@ from PySide2.QtWidgets import (
     QTabBar,
     QMessageBox,
 )
-from natsort import natsorted
 
 from .blockdiagram import BlockDiagramEditorView
 from ..sample import SampleTableEditorView
 from ...editor import Editor
 from ...utils import updateStyle, showYesNoDialog
-from ....color import Color
+from broadside.components.color import Color
 from ....models.block import Block, Sample
 from ....models.device import Device
-from ....models.project import ProjectModel
+from ...session import Session
 
 
 class BlockEditorView(QWidget):
@@ -200,7 +199,7 @@ class BlockListEditor(Editor):
 
     dataChangedFromModel = Signal()  # don't like the name
 
-    def __init__(self, model: ProjectModel, *args, **kwargs):
+    def __init__(self, model: Session, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.model = model
@@ -209,7 +208,7 @@ class BlockListEditor(Editor):
         self.view = BlockListEditorView()
         self.view.addBlockButton.clicked.connect(lambda: self.addBlock())
         self.view.deleteBlockButton.clicked.connect(lambda: self.deleteCurrentBlock())
-        self.view.dataChanged.connect(lambda: self.dataChanged.emit())
+        self.view.dataChanged.connect(lambda: self.dataChangedFromModel.emit())
 
         # initialize view
         for block in self.model.blocks:

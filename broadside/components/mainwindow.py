@@ -16,7 +16,7 @@ from PySide2.QtWidgets import (
 
 from .utils import QHLine
 
-STYLES_DIR = Path(__file__).parents[2].resolve() / "resources" / "styles"
+STYLES_DIR = Path(__file__).parents[1].resolve() / "resources" / "styles"
 
 
 def showAboutDialog(parent: QWidget = None) -> None:

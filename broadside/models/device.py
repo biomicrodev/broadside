@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict, Any
 
-from . import Serializable
 from .formulation import Formulation
+from .serializable import Serializable
 
 
 class Fiducial(Enum):
@@ -28,20 +28,17 @@ class AngularDirection(Enum):
 @dataclass
 class Device(Serializable):
     name: str
-    longitudinalOrientation: LongitudinalOrientation
-    longitudinalDirection: LongitudinalDirection
-    angularDirection: AngularDirection
+    longitudinal_orientation: LongitudinalOrientation
+    longitudinal_direction: LongitudinalDirection
+    angular_direction: AngularDirection
     payload: List[Formulation]
-
-    def __post_init__(self):
-        self.payload = self.payload or []
 
     def as_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
-            "longitudinal_orientation": self.longitudinalOrientation.value,
-            "longitudinal_direction": self.longitudinalDirection.value,
-            "angular_direction": self.angularDirection.value,
+            "longitudinal_orientation": self.longitudinal_orientation.value,
+            "longitudinal_direction": self.longitudinal_direction.value,
+            "angular_direction": self.angular_direction.value,
             "payload": [f.as_dict() for f in self.payload],
         }
 
@@ -49,24 +46,24 @@ class Device(Serializable):
     def from_dict(cls, dct: Dict[str, Any]):
         name = dct.get("name", "Unnamed")
 
-        longOrient = dct.get("longitudinal_orientation", None)
-        longOrient = (
-            LongitudinalOrientation(longOrient) if longOrient is not None else None
+        long_orient = dct.get("longitudinal_orientation", None)
+        long_orient = (
+            LongitudinalOrientation(long_orient) if long_orient is not None else None
         )
 
-        longDir = dct.get("longitudinal_direction", None)
-        longDir = LongitudinalDirection(longDir) if longDir is not None else None
+        long_dir = dct.get("longitudinal_direction", None)
+        long_dir = LongitudinalDirection(long_dir) if long_dir is not None else None
 
-        angDir = dct.get("angular_direction", None)
-        angDir = AngularDirection(angDir) if angDir is not None else None
+        ang_dir = dct.get("angular_direction", None)
+        ang_dir = AngularDirection(ang_dir) if ang_dir is not None else None
 
         payload = dct.get("payload", [])
         payload = [Formulation.from_dict(f) for f in payload]
 
         return cls(
             name=name,
-            longitudinalOrientation=longOrient,
-            longitudinalDirection=longDir,
-            angularDirection=angDir,
+            longitudinal_orientation=long_orient,
+            longitudinal_direction=long_dir,
+            angular_direction=ang_dir,
             payload=payload,
         )

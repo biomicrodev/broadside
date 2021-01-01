@@ -74,7 +74,7 @@ class ProjectView(QWidget):
         nameValueLabel.setText("none")
         nameValueLabel.setToolTip("none")
         nameValueLabel.setWordWrap(False)
-        # pathValueLabel.setAlignment(Qt.AlignLeft)
+        # nameValueLabel.setAlignment(Qt.AlignLeft)
         self.nameValueLabel = nameValueLabel
 
         projectStatusGrid = QGridLayout()

@@ -20,7 +20,7 @@ from PySide2.QtWidgets import (
 from .payload import FormulationTableEditorView
 from ..editor import Editor
 from ..utils import showYesNoDialog, updateStyle
-from ...color import Color
+from ..color import Color
 from ...models.device import (
     Device,
     LongitudinalDirection,
@@ -131,7 +131,7 @@ class DeviceEditorView(QWidget):
             longOrient = LongitudinalOrientation(
                 self.longitudinalOrientationComboBox.currentText()
             )
-            self.device.longitudinalOrientation = longOrient
+            self.device.longitudinal_orientation = longOrient
             self.dataChanged.emit()
 
         self.longitudinalOrientationComboBox.currentIndexChanged.connect(
@@ -142,7 +142,7 @@ class DeviceEditorView(QWidget):
             longDir = LongitudinalDirection(
                 self.longitudinalDirectionComboBox.currentText()
             )
-            self.device.longitudinalDirection = longDir
+            self.device.longitudinal_direction = longDir
             self.dataChanged.emit()
 
         self.longitudinalDirectionComboBox.currentIndexChanged.connect(
@@ -155,28 +155,28 @@ class DeviceEditorView(QWidget):
 
         # populate fields
         self.nameLineEdit.setText(self.device.name)
-        longOrient = self.device.longitudinalOrientation
+        longOrient = self.device.longitudinal_orientation
         if longOrient is None:
             self.longitudinalOrientationComboBox.setCurrentIndex(0)
-            self.device.longitudinalOrientation = LongitudinalOrientation(
+            self.device.longitudinal_orientation = LongitudinalOrientation(
                 self.longitudinalOrientationComboBox.itemText(0)
             )
         else:
             self.longitudinalOrientationComboBox.setCurrentText(longOrient.value)
 
-        longDir = self.device.longitudinalDirection
+        longDir = self.device.longitudinal_direction
         if longDir is None:
             self.longitudinalDirectionComboBox.setCurrentIndex(0)
-            self.device.longitudinalDirection = LongitudinalDirection(
+            self.device.longitudinal_direction = LongitudinalDirection(
                 self.longitudinalDirectionComboBox.itemText(0)
             )
         else:
             self.longitudinalDirectionComboBox.setCurrentText(longDir.value)
 
-        angDir = self.device.angularDirection
+        angDir = self.device.angular_direction
         if angDir is None:
             self.angularDirectionComboBox.setCurrentIndex(0)
-            self.device.angularDirection = AngularDirection(
+            self.device.angular_direction = AngularDirection(
                 self.angularDirectionComboBox.itemText(0)
             )
         else:

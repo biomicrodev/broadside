@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QApplication
 
-from .gui.viewer import Viewer
+from .viewer import Viewer
 
 logging.basicConfig(
     level=logging.DEBUG,

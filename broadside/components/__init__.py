@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 
 from PySide2.QtCore import QModelIndex, Qt, QRect
 from PySide2.QtGui import QPainter, QPen
@@ -9,12 +9,12 @@ from PySide2.QtWidgets import (
     QLineEdit,
 )
 
-from broadside.gui.color import Color
+from .color import Color
 
 
 class CellState(Enum):
-    Valid = "VALID"
-    Invalid = "INVALID"
+    Valid = auto()
+    Invalid = auto()
 
 
 class LineEditItemDelegate(QStyledItemDelegate):

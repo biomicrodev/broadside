@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from typing import List
 
 from PySide2.QtCore import Qt, QPointF, QEvent
@@ -11,13 +11,13 @@ from PySide2.QtWidgets import (
     QLabel,
 )
 
-from ...color import Color
+from ..color import Color
 
 
 class StepStatus(Enum):
-    Incomplete = "INCOMPLETE"
-    InProgress = "INPROGRESS"
-    Complete = "COMPLETE"
+    Incomplete = auto()
+    InProgress = auto()
+    Complete = auto()
 
 
 class IndexWidget(QWidget):
@@ -84,13 +84,13 @@ class IndexWidget(QWidget):
         )
         self.indexLabel.setStyleSheet(indexLabelStyleSheet)
 
-        textLabelStyleSheet = f"margin-top: 2px;; color: {self.textColors[state]}"
+        textLabelStyleSheet = f"margin-top: 2px; color: {self.textColors[state]}"
         self.textLabel.setStyleSheet(textLabelStyleSheet)
 
 
 class StepProgress(Enum):
-    Enabled = "ENABLED"
-    Disabled = "DISABLED"
+    Enabled = auto()
+    Disabled = auto()
 
 
 class ChevronWidget(QWidget):

@@ -11,14 +11,12 @@ class Navigator:
         self.model = NavigatorModel(n)
         self.view = NavigatorWidget(labels=labels)
 
-        self.initBindings()
-
-        # init state
+        self.init_bindings()
         self.refresh()
 
-    def initBindings(self):
-        self.view.backButton.clicked.connect(lambda: self.model.move_back())
-        self.view.nextButton.clicked.connect(lambda: self.model.move_next())
+    def init_bindings(self):
+        self.view.backButton.clicked.connect(lambda: self.model.moveBack())
+        self.view.nextButton.clicked.connect(lambda: self.model.moveNext())
 
         self.model.isValidChanged.connect(lambda: self.refresh())
         self.model.indexChanged.connect(lambda: self.refresh())
