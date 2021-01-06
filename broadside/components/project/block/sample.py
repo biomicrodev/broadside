@@ -29,7 +29,7 @@ from natsort import natsort_keygen
 
 from ...utils import CellState, LineEditItemDelegate
 from ....models.block import Sample, Block
-from ....models.device import Device
+from ....models.device import Device, NO_DEVICE
 
 
 def getCohorts(samples: List[Sample]) -> List[str]:
@@ -41,10 +41,11 @@ def getCohorts(samples: List[Sample]) -> List[str]:
 
 
 class SampleTableModel(QAbstractTableModel):
-    def __init__(self, block: Block, *args, **kwargs):
+    def __init__(self, block: Block, devices: List[Device], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.samples: List[Sample] = block.samples
+        self.devices = devices
 
     def getItem(self, index: QModelIndex) -> Tuple[str, Any]:
         row = index.row()
@@ -63,44 +64,38 @@ class SampleTableModel(QAbstractTableModel):
         row = index.row()
         column = index.column()
 
+        # if key is either sample name or device name
         if column < len(Sample.keys):
             key = Sample.keys[column]
             type_ = Sample.types[column]
 
-            try:
-                value = type_(value)
-                # if value hasn't actually changed...
-                if getattr(self.samples[row], key) == value:
-                    return False
-
-                setattr(self.samples[row], key, value)
-                self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
-            except ValueError:
+            value = type_(value)
+            oldValue = getattr(self.samples[row], key)
+            if oldValue == value:
                 return False
-            else:
-                return True
 
+            setattr(self.samples[row], key, value)
+            self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
+            return True
+
+        # if key is in cohorts
         else:
             cohorts = getCohorts(self.samples)
             key = cohorts[column - len(Sample.keys)]
-            type_ = str
-            try:
-                value = type_(value)
-                # if value hasn't actually changed...
-                oldValue = self.samples[row].cohorts.get(key, "")
-                if oldValue == value:
-                    return False
 
-                self.samples[row].cohorts[key] = value
-                self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
-            except ValueError:
+            value = str(value)
+            oldValue = self.samples[row].cohorts.get(key, "")
+            if oldValue == value:
                 return False
-            else:
-                return True
+
+            self.samples[row].cohorts[key] = value
+            self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
+            return True
 
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
         if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
             key, value = self.getItem(index)
+
             return str(value) if value is not None else ""
 
         elif role == Qt.BackgroundRole:
@@ -116,7 +111,14 @@ class SampleTableModel(QAbstractTableModel):
                 else:
                     return CellState.Valid
 
-            if (value == "") or (value is None):
+            elif key == "device_name":
+                deviceName = value
+                if deviceName in [d.name for d in self.devices]:
+                    return CellState.Valid
+                else:
+                    return CellState.Invalid
+
+            if (key == "sample") and ((value == "") or (value is None)):
                 return CellState.Invalid
             else:
                 return CellState.Valid
@@ -128,20 +130,6 @@ class SampleTableModel(QAbstractTableModel):
         self, index: QModelIndex, value: Any, role: Qt.ItemDataRole = None
     ) -> bool:
         if role == Qt.EditRole:
-            if not index.isValid():
-                return False
-
-            # key, _ = self.getItem(index)
-            # if key == "name":
-            # name = value
-            # otherNames = [
-            #     s.name for i, s in enumerate(self.samples) if i != index.row()
-            # ]
-            # if name in otherNames:
-            #     return False
-            # else:
-            #     return self.setItem(index, value)
-
             return self.setItem(index, value)
 
         return False
@@ -178,7 +166,7 @@ class SampleTableModel(QAbstractTableModel):
 
         index = self.rowCount()
         self.beginInsertRows(QModelIndex(), index, index)
-        self.samples.append(Sample.from_dict({"name": f"New sample {index+1}"}))
+        self.samples.append(Sample.from_dict({"name": f"New sample {index + 1}"}))
         self.endInsertRows()
 
         self.layoutChanged.emit()
@@ -316,20 +304,29 @@ class DeviceNamesModel(QAbstractListModel):
     here
     """
 
-    def __init__(self, devices: List[Device], *args, **kwargs):
+    def __init__(self, deviceNames: List[str], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.devices = devices
+        self.names = deviceNames
+        self.names.insert(0, NO_DEVICE)
 
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
         if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
-            return str(self.devices[index.row()].name)
+            return self.names[index.row()]
 
         elif role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
 
     def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
-        return len(self.devices)
+        return len(self.names)
+
+    def updateNames(self, deviceNames: List[str]) -> None:
+        self.layoutAboutToBeChanged.emit()
+
+        # self.names.clear()
+        self.names = [NO_DEVICE] + deviceNames
+
+        self.layoutChanged.emit()
 
 
 class DeviceComboBoxDelegate(QStyledItemDelegate):
@@ -394,7 +391,6 @@ class SampleTableView(QTableView):
 
 
 class SampleTableEditorView(QWidget):
-
     log = logging.getLogger(__name__)
 
     samplesChanged = Signal()
@@ -404,14 +400,15 @@ class SampleTableEditorView(QWidget):
 
         self.devices = devices
 
-        self.model = SampleTableModel(block)
+        self.model = SampleTableModel(block, devices)
         self.view = SampleTableView()
         self.view.setModel(self.model)
 
         self.model.dataChanged.connect(lambda _: self.samplesChanged.emit())
         self.model.layoutChanged.connect(lambda: self.samplesChanged.emit())
 
-        self.deviceNamesModel = DeviceNamesModel(devices)
+        deviceNames = [d.name for d in devices]
+        self.deviceNamesModel = DeviceNamesModel(deviceNames)
         self.view.deviceComboBoxDelegate.setModel(self.deviceNamesModel)
 
         self.initUI()
@@ -531,4 +528,6 @@ class SampleTableEditorView(QWidget):
             self.deleteCohortButton.setCursor(Qt.ForbiddenCursor)
 
     def refresh(self) -> None:
+        deviceNames = [d.name for d in self.devices]
+        self.deviceNamesModel.updateNames(deviceNames)
         self.deviceNamesModel.layoutChanged.emit()

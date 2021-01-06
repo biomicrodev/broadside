@@ -118,17 +118,6 @@ class BlockListEditorView(QWidget):
         self.tabWidget.removeTab(index)
         self.updateTabsClosable()
 
-    # def updateDeviceNames(self, names: List[str]) -> None:
-    #     nTabs = self.tabWidget.count()
-    #     for i in range(nTabs):
-    #         editor: BlockEditorView = self.tabWidget.widget(i)
-    #         editor.sampleTableEditorView.deviceNamesModel.updateNames(names)
-    #
-    #         samples: List[Sample] = editor.sampleTableEditorView.model.samples
-    #         for sample in samples:
-    #             if sample.device_name not in names:
-    #                 sample.device_name = names[0]
-
     def styleInvalidTabs(self, indexes: Set[int]) -> None:
         tabBar: QTabBar = self.tabWidget.tabBar()
         for index in range(tabBar.count()):

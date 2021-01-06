@@ -70,16 +70,19 @@ class FormulationTableModel(QAbstractTableModel):
         self, index: QModelIndex, value: Any, role: Qt.ItemDataRole = None
     ) -> bool:
         if role == Qt.EditRole:
-            key = Formulation.keys[index.column()]
-            type_ = Formulation.types[index.column()]
+            row = index.row()
+            column = index.column()
 
-            try:
-                setattr(self.formulations[index.row()], key, type_(value))
-            except ValueError:
+            key = Formulation.keys[column]
+            type_ = Formulation.types[column]
+
+            value = type_(value)
+            oldValue = getattr(self.formulations[row], key)
+            if oldValue == value:
                 return False
-            else:
-                self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
 
+            setattr(self.formulations[row], key, value)
+            self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
             return True
 
         return False

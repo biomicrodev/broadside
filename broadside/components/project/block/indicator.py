@@ -26,7 +26,7 @@ from PySide2.QtWidgets import (
     QGraphicsObject,
 )
 
-from ....utils import clip_angle
+from ....models.utils import clip_angle
 
 AngledLabel = Tuple[str, float]
 
@@ -88,8 +88,9 @@ class FiducialItem(QGraphicsPolygonItem):
 
         dy = pos.y() - center.y()
         dx = pos.x() - center.x()
-        angle = math.degrees(math.atan2(dy, dx))
+        angle = math.atan2(dy, dx)
         angle = clip_angle(angle)
+        angle = math.degrees(angle)
 
         self.setAngle(angle)
         self.angleSignal.changed.emit(angle)
@@ -207,6 +208,7 @@ class IndicatorItem(QGraphicsObject):
         self.circleItem = CircleItem(self)
         self.textItem = AlignedGraphicsTextItem(self.circleItem)
         self.labelsItem = LabelsItem(self.circleItem, radius=CircleItem.radius)
+
         self.fiducialItem = FiducialItem(self.circleItem, offset=CircleItem.radius)
 
         def angleChanged(angle: float) -> None:

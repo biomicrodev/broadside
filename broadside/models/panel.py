@@ -8,6 +8,7 @@ from .serializable import Serializable
 class Channel(Serializable):
     keys = ["biomarker", "chromogen", "notes"]
     headers = ["Biomarker", "Chromogen", "Notes"]
+    types = [str, str, str]
 
     biomarker: str = ""
     chromogen: str = ""

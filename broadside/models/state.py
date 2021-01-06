@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Set
 
 from .block import Block
-from .device import Device
+from .device import Device, NO_DEVICE
 from .panel import Panel
 from .task_graph import TaskGraph
 
@@ -45,6 +45,13 @@ class State:
         blocks = [Block.from_dict(b) for b in state.get("blocks", [])]
         panels = [Panel.from_dict(p) for p in state.get("panels", [])]
         task_graph = TaskGraph.from_dict(state.get("task_graph", {}))
+
+        # validate device names in samples
+        device_names = [NO_DEVICE] + [d.name for d in devices]
+        for block in blocks:
+            for sample in block.samples:
+                if sample.device_name not in device_names:
+                    sample.device_name = ""
 
         self.description: str = description
         self.devices: List[Device] = devices
@@ -108,6 +115,7 @@ class State:
                 index_count = sample_names.count(sample_name)
                 if index_count > 1:
                     invalid.add(block_ind)
+
         return invalid
 
     def invalid_panel_indexes(self) -> Set[int]:

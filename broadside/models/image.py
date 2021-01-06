@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Any, Set, NamedTuple, Optional, Tuple
+from typing import Dict, List, Any, Set, NamedTuple, Optional
 
 import dask.array as da
 import numpy as np
@@ -11,9 +11,9 @@ from tifffile import TiffFile, TiffPageSeries, TiffPage
 from tifffile.tifffile import ZarrTiffStore
 from zarr import Group
 
-namespace = "{http://www.leica-microsystems.com/scn/2010/10/01}"
+from .utils import PointF
 
-PointYX = Tuple[float, float]  # to match numpy
+NS_SCN = "{http://www.leica-microsystems.com/scn/2010/10/01}"
 
 
 def str2int(s: str) -> int:
@@ -38,8 +38,8 @@ class Pyramid(NamedTuple):
     """
 
     layers: List[da.Array]
-    mpp: PointYX
-    offset: PointYX
+    mpp: PointF
+    offset: PointF
     object_groups: List[ObjectGroup] = []
 
 
@@ -72,12 +72,9 @@ class Image:
 
     filepath: Path
     pixels: PyramidGroup
-    block_name: Optional[str] = None
-    panel_name: Optional[str] = None
-    annotations: List[Annotation] = None
-
-    def __post_init__(self):
-        self.annotations = self.annotations or []
+    block_name: str = ""
+    panel_name: str = ""
+    annotations: List[Annotation] = field(default_factory=list)
 
 
 def parse_svs_metadata(s: str):
@@ -150,21 +147,26 @@ def get_scn_pyramids(
     pyramids: List[Pyramid] = []
     names: List[str] = [s.name for s in series]
     for name in names:
-        image_node: ET.Element = metadata.find(f'.//{namespace}image[@name="{name}"]')
-        view_node: ET.Element = image_node.find(f".//{namespace}view")
+        image_node: ET.Element = metadata.find(f'.//{NS_SCN}image[@name="{name}"]')
+        view_node: ET.Element = image_node.find(f".//{NS_SCN}view")
 
-        physical_size_x = str2int(view_node.get("sizeX")) / 1000
-        physical_size_y = str2int(view_node.get("sizeY")) / 1000
+        physical_size = PointF(
+            str2int(view_node.get("sizeX")) / 1000,
+            str2int(view_node.get("sizeY")) / 1000,
+        )
 
-        physical_offset_x = str2int(view_node.get("offsetX")) / 1000
-        physical_offset_y = str2int(view_node.get("offsetY")) / 1000
+        physical_offset = PointF(
+            str2int(view_node.get("offsetX")) / 1000,
+            str2int(view_node.get("offsetY")) / 1000,
+        )
 
-        pixels_node: ET.Element = image_node.find(f".//{namespace}pixels")
-        pixel_size_x = str2int(pixels_node.get("sizeX"))
-        pixel_size_y = str2int(pixels_node.get("sizeY"))
+        pixels_node: ET.Element = image_node.find(f".//{NS_SCN}pixels")
+        pixel_size = PointF(
+            str2int(pixels_node.get("sizeX")), str2int(pixels_node.get("sizeY"))
+        )
 
-        mpp_x = physical_size_x / pixel_size_x
-        mpp_y = physical_size_y / pixel_size_y
+        # could override `__div__` in `Point` class... this only appears once though
+        mpp = PointF(physical_size.x / pixel_size.x, physical_size.y / pixel_size.y)
 
         store: ZarrTiffStore = next(s for s in series if s.name == name).aszarr()
         group: Group = zarr.open(store, mode="r")
@@ -182,13 +184,7 @@ def get_scn_pyramids(
         #     for level in levels
         # ]
 
-        pyramids.append(
-            Pyramid(
-                layers=pyramid,
-                mpp=(mpp_y, mpp_x),
-                offset=(physical_offset_y, physical_offset_x),
-            )
-        )
+        pyramids.append(Pyramid(layers=pyramid, mpp=mpp, offset=physical_offset))
 
     return pyramids
 
@@ -213,8 +209,8 @@ def normalize(path: Path) -> Optional[Image]:
         pyramids = [
             Pyramid(
                 layers=get_svs_layers(path, image),
-                mpp=(metadata["MPP"],) * 2,
-                offset=(0, 0),
+                mpp=PointF(metadata["MPP"], metadata["MPP"]),
+                offset=PointF(0, 0),
             )
         ]
 
@@ -239,14 +235,13 @@ def normalize(path: Path) -> Optional[Image]:
 
         # get label
         label_ifd = int(
-            metadata.find(f".//{namespace}supplementalImage[@type='label']").get("ifd")
+            metadata.find(f".//{NS_SCN}supplementalImage[@type='label']").get("ifd")
         )
         label = next(p for p in pages if p.index == label_ifd).asarray()
 
         sources = {
             metadata.find(
-                f'.//{namespace}image[@name="{s.name}"]'
-                f"//{namespace}illuminationSource"
+                f'.//{NS_SCN}image[@name="{s.name}"]' f"//{NS_SCN}illuminationSource"
             ).text
             for s in series
         }

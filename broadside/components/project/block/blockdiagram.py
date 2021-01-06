@@ -17,8 +17,9 @@ from PySide2.QtWidgets import (
 from natsort import natsorted
 
 from .indicator import IndicatorItem, AngledLabel
-from ....models.block import Block, Vector
-from ....models.device import Device
+from ....models.block import Block
+from ....models.device import Device, NO_DEVICE
+from ....models.utils import PointF
 
 
 def get_levels(block: Block, devices: List[Device]) -> List[str]:
@@ -194,7 +195,7 @@ class BlockDiagramEditorView(QGroupBox):
         view: BlockDiagramView = self.diagramWidget.scene.views()[0]
         width = view.width()
         height = view.height()
-        center = (width / 2, height / 2)
+        center = PointF(width / 2, height / 2)
 
         level = self.sliderWidget.label
         self.diagramWidget.scene.clear()
@@ -205,50 +206,46 @@ class BlockDiagramEditorView(QGroupBox):
             sample = self.block.samples[i]
             vector = sample.vector
 
-            deviceName = sample.device_name
-            device = next((d for d in self.devices if d.name == deviceName), None)
-            angledLabels: List[AngledLabel] = (
-                [
-                    (f.name, f.angle)
-                    for f in device.payload
-                    if (
-                        (f.level == level)
-                        and ((f.name is not None) or (f.name != ""))
-                        and (f.angle is not None)
-                    )
-                ]
-                if (device is not None)
-                else []
-            )
+            vector.pos.x = vector.pos.x or center.x
+            vector.pos.y = vector.pos.y or center.y
 
-            # TODO: refactor points from List[int] to a dataclass
-            if vector.pos[0] is None:
-                vector.pos[0] = center[0]
-            if vector.pos[1] is None:
-                vector.pos[1] = center[1]
-
-            # clip outside positions to max value
-            if vector.pos[0] > width:
-                vector.pos[0] = width
-            if vector.pos[1] > height:
-                vector.pos[1] = height
+            # clip positions
+            vector.pos.x = min(max(vector.pos.x, 0), width)
+            vector.pos.y = min(max(vector.pos.y, 0), height)
 
             indicator = IndicatorItem(i)
             self.diagramWidget.scene.addItem(indicator)
             self.indicators.append(indicator)
 
-            indicator.setText(sample.name + "\n" + device.name)
-            indicator.angle = vector.angle  # mixing Qt and python here...
-            indicator.setAngledLabels(angledLabels)
-            indicator.setPos(vector.pos[0], vector.pos[1])
+            # set indicator appearance
+            deviceName = sample.device_name
+            if deviceName == NO_DEVICE:
+                indicator.fiducialItem.hide()
+                indicator.setText(sample.name + "\n" + NO_DEVICE)
+                indicator.angle = 0
+                indicator.setAngledLabels([])
+                indicator.setPos(vector.pos.x, vector.pos.y)
+
+            else:
+                device = next(d for d in self.devices if d.name == deviceName)
+
+                angledLabels: List[AngledLabel] = [
+                    (f.name, f.angle)
+                    for f in device.payload
+                    if ((f.level == level) and (f.name != ""))
+                ]
+
+                indicator.fiducialItem.show()
+                indicator.setText(sample.name + "\n" + device.name)
+                indicator.angle = vector.angle  # mixing Qt and python here...
+                indicator.setAngledLabels(angledLabels)
+                indicator.setPos(vector.pos.x, vector.pos.y)
 
             def update(indicator: IndicatorItem):
                 # need to maintain reference to indicator
                 vector = self.block.samples[indicator.index].vector
-                vector.pos = (
-                    int(indicator.pos().x()),
-                    int(indicator.pos().y()),
-                )
+                vector.pos.x = int(indicator.pos().x())
+                vector.pos.y = int(indicator.pos().y())
                 vector.angle = indicator.angle
                 self.blockChanged.emit()
 
@@ -258,14 +255,21 @@ class BlockDiagramEditorView(QGroupBox):
         level = self.sliderWidget.label
 
         for i, sample in enumerate(self.block.samples):
-            deviceName = sample.device_name
-            device = next(d for d in self.devices if d.name == deviceName)
-            angledLabels: List[AngledLabel] = [
-                (f.name, f.angle) for f in device.payload if f.level == level
-            ]
-
             indicator = self.indicators[i]
-            indicator.setAngledLabels(angledLabels)
+
+            deviceName = sample.device_name
+            if deviceName == NO_DEVICE:
+                indicator.fiducialItem.hide()
+                indicator.setAngledLabels([])
+
+            else:
+                device = next(d for d in self.devices if d.name == deviceName)
+                angledLabels: List[AngledLabel] = [
+                    (f.name, f.angle) for f in device.payload if f.level == level
+                ]
+
+                indicator.fiducialItem.show()
+                indicator.setAngledLabels(angledLabels)
 
     def updateSlider(self) -> None:
         levels = get_levels(self.block, self.devices)

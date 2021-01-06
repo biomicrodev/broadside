@@ -5,6 +5,8 @@ from typing import List, Dict, Any
 from .formulation import Formulation
 from .serializable import Serializable
 
+NO_DEVICE = "no device"
+
 
 class Fiducial(Enum):
     Notch = "notch"

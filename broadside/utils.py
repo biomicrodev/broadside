@@ -1,17 +1,7 @@
 import cProfile
 import functools
-import math
 import pstats
 from typing import Callable, Any
-
-
-def clip_angle(val: float) -> float:
-    # in degrees!
-    # `math.fmod` not guaranteed to return a positive value
-    val = math.fmod(val, 360.0)
-    if val < 0.0:
-        val += 360.0
-    return round(val)
 
 
 def cprofile(

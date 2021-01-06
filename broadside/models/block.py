@@ -1,33 +1,46 @@
 from dataclasses import dataclass, field
 from typing import Dict, Any, List
 
+from .device import NO_DEVICE
 from .serializable import Serializable
-from ..utils import clip_angle
+from .utils import PointI, Angle
 
 
 class Vector:
-    def __init__(self, *, pos: List[int] = None, angle: float = 0.0):
-        self.pos = pos or [None, None]
-        assert len(self.pos) == 2
-        self.angle = angle
+    def __init__(self, *, pos: PointI = PointI(), angle: float = 0.0):
+        self._pos = pos
+        self._angle = Angle(deg=angle)
+
+    @property
+    def pos(self) -> PointI:
+        return self._pos
+
+    @pos.setter
+    def pos(self, val: PointI) -> None:
+        self._pos.x = val.x
+        self._pos.y = val.y
 
     @property
     def angle(self) -> float:
-        return self._angle
+        return self._angle.deg
 
     @angle.setter
     def angle(self, val: float) -> None:
-        self._angle = clip_angle(val)
+        self._angle.deg = val
 
     def is_valid(self) -> bool:
-        return (self.pos[0] is not None) and (self.pos[1] is not None)
+        return self.pos.is_valid()
 
     def as_dict(self) -> Dict[str, Any]:
-        return {"pos": self.pos, "angle": self.angle}
+        return {
+            "pos": (self.pos.x, self.pos.y),
+            "angle": self._angle.int,  # human-readable
+        }
 
     @classmethod
     def from_dict(cls, dct: Dict[str, Any]) -> "Vector":
-        pos = dct.get("pos", [None, None])
+        pos = dct.get("pos", None)
+        pos = PointI(*(pos[:2])) if (pos is not None) else PointI()
 
         angle = dct.get("angle", 0.0)
         angle = float(angle)
@@ -61,7 +74,7 @@ class Sample(Serializable):
     def from_dict(cls, dct: Dict[str, Any]) -> "Sample":
         name = dct.get("name", "")
 
-        device_name = dct.get("device_name", "")
+        device_name = dct.get("device_name", NO_DEVICE)
 
         cohorts = dct.get("cohorts", {})
 

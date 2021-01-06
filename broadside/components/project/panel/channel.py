@@ -62,16 +62,19 @@ class ChannelTableModel(QAbstractTableModel):
         self, index: QModelIndex, value: Any, role: Qt.ItemDataRole = None
     ) -> bool:
         if role == Qt.EditRole:
-            if not index.isValid():
+            row = index.row()
+            column = index.column()
+
+            key = Channel.keys[column]
+            type_ = Channel.types[column]
+
+            value = type_(value)
+            oldValue = getattr(self.channels[row], key)
+            if oldValue == value:
                 return False
 
-            key = Channel.keys[index.column()]
-            try:
-                setattr(self.channels[index.row()], key, str(value))
-                self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
-            except ValueError:
-                return False
-
+            setattr(self.channels[row], key, value)
+            self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
             return True
 
         return False
