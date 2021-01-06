@@ -1,5 +1,7 @@
 from typing import List
 
+from PySide2.QtCore import Qt
+
 from .model import NavigatorModel
 from .view import NavigatorWidget
 
@@ -23,5 +25,15 @@ class Navigator:
 
     def refresh(self):
         self.view.backButton.setEnabled(not self.model.first)
-        self.view.nextButton.setEnabled((not self.model.last) and (self.model.isValid))
+        self.view.backButton.setCursor(
+            Qt.PointingHandCursor if (not self.model.first) else Qt.ForbiddenCursor
+        )
+
+        self.view.nextButton.setEnabled((not self.model.last) and self.model.isValid)
+        self.view.nextButton.setCursor(
+            Qt.PointingHandCursor
+            if (not self.model.last) and self.model.isValid
+            else Qt.ForbiddenCursor
+        )
+
         self.view.setState(index=self.model.index, isComplete=self.model.isValid)

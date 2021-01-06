@@ -5,7 +5,7 @@ import pstats
 from typing import Callable, Any
 
 
-def norm_angle(val: float) -> float:
+def clip_angle(val: float) -> float:
     # in degrees!
     # `math.fmod` not guaranteed to return a positive value
     val = math.fmod(val, 360.0)

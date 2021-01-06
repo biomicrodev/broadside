@@ -1,7 +1,8 @@
+from dataclasses import dataclass, field
 from typing import Optional, Dict, Union, Any
 
 from .serializable import Serializable
-from ..utils import norm_angle
+from ..utils import clip_angle
 
 
 class Formulation(Serializable):
@@ -9,47 +10,31 @@ class Formulation(Serializable):
     headers = ["Level", "Angle", "Name"]
     types = [str, float, str]
 
-    def __init__(self, *, level: Union[str, int], angle: Optional[float], name: str):
-        self._level: str = str(level)
-        self._angle: float = angle
-        self._name: str = name
+    def __init__(self, *, level: str = "", angle: float = 0.0, name: str = ""):
+        self.level = level
+        self.angle = angle
+        self.name = name
 
     @property
-    def level(self) -> str:
-        return self._level
-
-    @level.setter
-    def level(self, val: Union[str, int]) -> None:
-        self._level = str(val)
-
-    @property
-    def angle(self) -> Optional[float]:
+    def angle(self) -> float:
         return self._angle
 
     @angle.setter
     def angle(self, val: float) -> None:
-        self._angle = norm_angle(val)
+        self._angle = clip_angle(val)
 
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @name.setter
-    def name(self, val: str) -> None:
-        self._name = val
-
-    def isValid(self) -> bool:
-        return (self.level != "") and (self.angle is not None) and (self.name != "")
+    def is_valid(self) -> bool:
+        return (self.level != "") and (self.name != "")
 
     def as_dict(self) -> Dict[str, Any]:
         return {"level": self.level, "angle": self.angle, "name": self.name}
 
     @classmethod
-    def from_dict(cls, dct: Dict[str, Any]):
+    def from_dict(cls, dct: Dict[str, Any]) -> "Formulation":
         level = dct.get("level", "")
 
-        angle = dct.get("angle", None)
-        angle = float(angle) if angle is not None else None
+        angle = dct.get("angle", 0.0)
+        angle = float(angle)
 
         name = dct.get("name", "")
 

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from PySide2.QtCore import Qt, Signal
@@ -35,18 +36,27 @@ def showAboutDialog(parent: QWidget = None) -> None:
 
 
 class MainWindow(QMainWindow):
+    log = logging.getLogger(__name__)
+
     aboutToClose = Signal(QCloseEvent)
 
-    def __init__(self):
+    def __init__(self, navWidget: QWidget, *, theme: str = "light"):
         super().__init__(parent=None)
 
+        self.navWidget = navWidget
+        self.theme = theme
+
+        self.setFocusPolicy(Qt.StrongFocus)
         self.setWindowTitle("Broadside")
-        self.setMinimumHeight(500)
         self.setMinimumWidth(700)
+        self.setMinimumHeight(500)
         self.resize(1200, 800)  # w, h
 
         self.initMenuBar()
         self.initBindings()
+        self.initLayout()
+
+        self.applyStyleSheet()
 
     def initMenuBar(self) -> None:
         # set up actions
@@ -91,9 +101,7 @@ class MainWindow(QMainWindow):
     def initBindings(self) -> None:
         self.aboutAction.triggered.connect(lambda: showAboutDialog(self))
 
-    def initCentralWidget(self, navView: QWidget) -> None:
-        self.navView = navView
-
+    def initLayout(self) -> None:
         editorViewContainer = QVBoxLayout()
         editorViewContainer.setSpacing(0)
         editorViewContainer.setContentsMargins(0, 0, 0, 0)
@@ -103,7 +111,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self.navView, stretch=0)
+        layout.addWidget(self.navWidget, stretch=0)
         layout.addWidget(QHLine(), stretch=0)
         layout.addLayout(self.editorViewContainer, stretch=1)
 
@@ -111,10 +119,20 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
-    def applyStyleSheet(self, style: str = "light") -> None:
-        filepath = STYLES_DIR / f"{style}.qss"
+    def toggleTheme(self) -> None:
+        if self.theme == "light":
+            self.theme = "dark"
+        elif self.theme == "dark":
+            self.theme = "light"
+
+        self.applyStyleSheet()
+
+    def applyStyleSheet(self) -> None:
+        filepath = STYLES_DIR / f"{self.theme}.qss"
         stylesheet = filepath.read_text()
         self.setStyleSheet(stylesheet)
+
+        self.log.info(f"Theme set to {self.theme}")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """
@@ -124,3 +142,11 @@ class MainWindow(QMainWindow):
         """
 
         self.aboutToClose.emit(event)
+
+    def setEditorView(self, widget: QWidget) -> None:
+        # delete old widget ...
+        oldWidget: QWidget = self.editorViewContainer.itemAt(0).widget()
+        oldWidget.deleteLater()
+
+        # ... and set new widget
+        self.editorViewContainer.addWidget(widget)

@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import List, Any
+from typing import List, Any, Type, Tuple
 
 from PySide2.QtCore import (
     QAbstractTableModel,
@@ -8,6 +8,7 @@ from PySide2.QtCore import (
     Qt,
     QItemSelectionModel,
     Signal,
+    QAbstractItemModel,
 )
 from PySide2.QtWidgets import (
     QWidget,
@@ -20,8 +21,8 @@ from PySide2.QtWidgets import (
 )
 from natsort import natsort_keygen
 
-from .. import CellState, LineEditItemDelegate
-from ...models.formulation import Formulation
+from ...utils import CellState, LineEditItemDelegate
+from ....models.formulation import Formulation
 
 
 class FormulationTableModel(QAbstractTableModel):
@@ -45,11 +46,10 @@ class FormulationTableModel(QAbstractTableModel):
 
         elif role == Qt.BackgroundRole:
             row = index.row()
-
             key = Formulation.keys[index.column()]
             value = getattr(self.formulations[row], key)
 
-            if (value == "") or (value is None):
+            if (key in ["level", "name"]) and (value == ""):
                 return CellState.Invalid
 
             # are formulations unique? (up to level, angle)
@@ -59,8 +59,9 @@ class FormulationTableModel(QAbstractTableModel):
             ]
             if levelAngle in otherLevelsAngles:
                 return CellState.Invalid
-            else:
-                return CellState.Valid
+
+            # otherwise...
+            return CellState.Valid
 
         elif role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
@@ -69,17 +70,15 @@ class FormulationTableModel(QAbstractTableModel):
         self, index: QModelIndex, value: Any, role: Qt.ItemDataRole = None
     ) -> bool:
         if role == Qt.EditRole:
-            if not index.isValid():
-                return False
-
             key = Formulation.keys[index.column()]
             type_ = Formulation.types[index.column()]
 
             try:
                 setattr(self.formulations[index.row()], key, type_(value))
-                self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
             except ValueError:
                 return False
+            else:
+                self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
 
             return True
 
@@ -116,7 +115,7 @@ class FormulationTableModel(QAbstractTableModel):
 
         self.layoutChanged.emit()
 
-    def removeFormulation(self, index: int) -> None:
+    def deleteFormulation(self, index: int) -> None:
         self.layoutAboutToBeChanged.emit()
 
         self.beginRemoveRows(QModelIndex(), index, index)
@@ -124,6 +123,19 @@ class FormulationTableModel(QAbstractTableModel):
         self.endRemoveRows()
 
         self.layoutChanged.emit()
+
+    def sortFormulations(self) -> None:
+        def key(f: Formulation) -> Tuple[bool, str, float]:
+            return f.level == "", f.level, f.angle
+
+        natkey = natsort_keygen(key=key)
+
+        # copying like this is okay since this list won't ever be more than 40
+        # formulations
+        oldFormulations = copy.copy(self.formulations)
+        self.formulations.sort(key=natkey)
+        if self.formulations != oldFormulations:
+            self.layoutChanged.emit()
 
 
 class FormulationTableView(QTableView):
@@ -137,88 +149,104 @@ class FormulationTableView(QTableView):
         delegate = LineEditItemDelegate(parent=self)
         self.setItemDelegate(delegate)
 
+    def formulationAdded(self) -> None:
+        # only for setting current index
+        model: Type[QAbstractItemModel] = self.model()
+
+        row = model.rowCount() - 1
+        column = 0
+        modelIndex: QModelIndex = model.createIndex(row, column)
+        self.setCurrentIndex(modelIndex)
+        self.setFocus()
+
+    def formulationDeleted(self, index: QModelIndex) -> None:
+        # only for setting current index
+        model: Type[QAbstractItemModel] = self.model()
+        nRows = model.rowCount()
+        row = index.row()
+        column = index.column()
+
+        if row != nRows:  # row is already deleted; subtle
+            modelIndex = model.createIndex(row, column)
+            self.setCurrentIndex(modelIndex)
+            self.setFocus()
+
 
 class FormulationTableEditorView(QWidget):
     log = logging.getLogger(__name__)
 
-    dataChanged = Signal()
+    formulationListChanged = Signal()
 
     def __init__(self, formulations: List[Formulation], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.model = FormulationTableModel(formulations)
-        self.model.dataChanged.connect(lambda _: self.dataChanged.emit())
-        self.model.layoutChanged.connect(lambda: self.dataChanged.emit())
+        self.model.dataChanged.connect(lambda _: self.formulationListChanged.emit())
+        self.model.layoutChanged.connect(lambda: self.formulationListChanged.emit())
 
         self.view = FormulationTableView()
         self.view.setModel(self.model)
 
-        def updateButtons():
-            indexes = self.view.selectedIndexes()
-            nRows = self.model.rowCount()
-            indexes = [index for index in indexes if index.row() < nRows]
-            self.deleteFormulationButton.setEnabled(len(indexes) > 0)
+        self.initUI()
+        self.initBindings()
 
-        selectionModel: QItemSelectionModel = self.view.selectionModel()
-        selectionModel.selectionChanged.connect(lambda: updateButtons())
-
-        def addFormulation():
-            self.model.addFormulation()
-
-            row = self.model.rowCount() - 1
-            column = 0
-            modelIndex: QModelIndex = self.model.createIndex(row, column)
-            self.view.setCurrentIndex(modelIndex)
-            self.view.setFocus()
-
+    def initUI(self):
         addFormulationButton = QPushButton()
         addFormulationButton.setText("Add formulation")
-        addFormulationButton.clicked.connect(lambda: addFormulation())
+        addFormulationButton.setCursor(Qt.PointingHandCursor)
         self.addFormulationButton = addFormulationButton
-
-        def deleteFormulation():
-            # after deleting row, need to re-set index
-            index: QModelIndex = self.view.selectedIndexes()[0]
-            row = index.row()
-            column = index.column()
-
-            self.model.removeFormulation(row)
-
-            modelIndex: QModelIndex = self.model.createIndex(row, column)
-            self.view.setCurrentIndex(modelIndex)
-            self.view.setFocus()
 
         deleteFormulationButton = QPushButton()
         deleteFormulationButton.setText("Delete formulation")
         deleteFormulationButton.setObjectName("deleteFormulationButton")
         deleteFormulationButton.setDisabled(True)
-        deleteFormulationButton.clicked.connect(lambda: deleteFormulation())
+        deleteFormulationButton.setCursor(Qt.ForbiddenCursor)
         self.deleteFormulationButton = deleteFormulationButton
-
-        natsort = natsort_keygen(
-            key=lambda a: (a.level is None, a.angle is None, a.level, a.angle)
-        )
-
-        def sort():
-            # copying like this is okay since this list won't ever be more than 40
-            # formulations
-            oldFormulations = copy.copy(self.model.formulations)
-            self.model.formulations.sort(key=natsort)
-            if self.model.formulations != oldFormulations:
-                self.model.layoutChanged.emit()
 
         sortFormulationsButton = QPushButton()
         sortFormulationsButton.setText("Sort")
-        sortFormulationsButton.clicked.connect(lambda: sort())
+        sortFormulationsButton.setCursor(Qt.PointingHandCursor)
         self.sortFormulationsButton = sortFormulationsButton
 
         buttonsLayout = QHBoxLayout()
-        buttonsLayout.addWidget(self.addFormulationButton)
-        buttonsLayout.addWidget(self.deleteFormulationButton)
-        buttonsLayout.addWidget(self.sortFormulationsButton)
+        buttonsLayout.addWidget(addFormulationButton)
+        buttonsLayout.addWidget(deleteFormulationButton)
+        buttonsLayout.addWidget(sortFormulationsButton)
 
         layout = QVBoxLayout()
         layout.addWidget(self.view, 1)
         layout.addLayout(buttonsLayout, 0)
 
         self.setLayout(layout)
+
+    def initBindings(self):
+        def addFormulation():
+            self.model.addFormulation()
+            self.view.formulationAdded()
+
+        self.addFormulationButton.clicked.connect(lambda: addFormulation())
+
+        def deleteFormulation():
+            index: QModelIndex = self.view.selectedIndexes()[0]
+            row = index.row()
+
+            self.model.deleteFormulation(row)
+            self.view.formulationDeleted(index)
+            self.updateButtons()
+
+        self.deleteFormulationButton.clicked.connect(lambda: deleteFormulation())
+
+        self.sortFormulationsButton.clicked.connect(
+            lambda: self.model.sortFormulations()
+        )
+
+        selectionModel: QItemSelectionModel = self.view.selectionModel()
+        selectionModel.selectionChanged.connect(lambda: self.updateButtons())
+        self.updateButtons()
+
+    def updateButtons(self):
+        indexes: List[int] = self.view.selectedIndexes()
+        self.deleteFormulationButton.setEnabled(len(indexes) > 0)
+        self.deleteFormulationButton.setCursor(
+            Qt.PointingHandCursor if (len(indexes) > 0) else Qt.ForbiddenCursor
+        )

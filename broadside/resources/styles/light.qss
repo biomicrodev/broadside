@@ -39,18 +39,24 @@ QLabel#noProjectSelectedLabel {
     color: hsl(0, 0%, 80%);
 }
 
+QPushButton {
+    height: 22px;
+}
+
 QPushButton#deleteDeviceButton,
 QPushButton#deleteFormulationButton,
 QPushButton#deleteBlockButton,
 QPushButton#deleteSampleButton,
-QPushButton#deleteCohortButton {
+QPushButton#deleteCohortButton,
+QPushButton#deleteChannelButton {
     background-color: rgb(190, 30, 30);
 }
 QPushButton#deleteDeviceButton:enabled,
 QPushButton#deleteFormulationButton:enabled,
 QPushButton#deleteBlockButton:enabled,
 QPushButton#deleteSampleButton:enabled,
-QPushButton#deleteCohortButton:enabled {
+QPushButton#deleteCohortButton:enabled,
+QPushButton#deleteChannelButton:enabled {
     color: white;
 }
 
@@ -58,4 +64,35 @@ QLineEdit[valid=false] {
     padding: 2px 0;
     border: 0.5px solid rgb(190, 30, 30);
     border-radius: 2px;
+}
+
+QTabBar::close-button {
+    border-radius: 2px;
+    image: url("broadside/resources/icons/close-24px.svg");
+    margin-left: 2px;
+    margin-top: 1px;
+    margin-bottom: 1px;
+    color: hsl(0, 0%, 10%);
+}
+
+QTabBar::close-button:hover:selected {
+    background-color: hsl(0, 0%, 85%);
+}
+QTabBar::close-button:hover:!selected {
+    background-color: hsl(0, 0%, 75%);
+}
+
+QTabBar::close-button:pressed {
+    background-color: hsl(0, 0%, 70%);
+}
+
+QTabBar::scroller {
+    width: 44px;
+}
+
+QPushButton#addTabButton:hover {
+    background-color: hsl(0, 0%, 80%);
+}
+QPushButton#addTabButton:pressed {
+    background-color: hsl(0, 0%, 70%);
 }

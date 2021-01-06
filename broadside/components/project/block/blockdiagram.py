@@ -16,9 +16,21 @@ from PySide2.QtWidgets import (
 )
 from natsort import natsorted
 
-from .indicators import IndicatorItem, AngledLabel
-from ....models.block import Block
+from .indicator import IndicatorItem, AngledLabel
+from ....models.block import Block, Vector
 from ....models.device import Device
+
+
+def get_levels(block: Block, devices: List[Device]) -> List[str]:
+    device_names = [s.device_name for s in block.samples]
+    payloads = []
+    for d in devices:
+        if d.name in device_names:
+            payloads.extend(d.payload)
+    levels = [p.level for p in payloads]
+    levels = list(set(levels))
+    levels = natsorted(levels)
+    return levels
 
 
 class Slider(QSlider):
@@ -71,7 +83,7 @@ class LabeledSlider(QWidget):
 
     @property
     def label(self) -> str:
-        return self.labels[self.value]
+        return self.labels[self.value] if self.labels else ""
 
 
 class BlockDiagramScene(QGraphicsScene):
@@ -118,18 +130,6 @@ class BlockDiagramWidget(QWidget):
         # self.setGeometry(0, 0, 500, 500)
 
 
-def getLevels(block: Block, devices: List[Device]) -> List[str]:
-    deviceNames = [s.deviceName for s in block.samples]
-    payloads = []
-    for d in devices:
-        if d.name in deviceNames:
-            payloads.extend(d.payload)
-    levels = [p.level for p in payloads]
-    levels = list(set(levels))
-    levels = natsorted(levels)
-    return levels
-
-
 class BlockDiagramEditorView(QGroupBox):
     """
     How to populate this widget, using the current block and the devices:
@@ -145,15 +145,15 @@ class BlockDiagramEditorView(QGroupBox):
 
     from block diagram editor to model:
         whenever indicator is dragged:
-            update block.vectors[index].pos
+            update block.samples[index].vector.pos
         whenever indicator fiducial is dragged:
-            update block.vectors[index].angle
+            update block.samples[index].vector.angle
 
     from model to block diagram editor:
         whenever new sample is added:
-            add to block.vectors, with pos set to midpoint and angle set to 0
+            add to block.samples, with pos set to midpoint and angle set to 0
         whenever sample is deleted:
-            delete from block.vectors[index]
+            delete from block.samples[index]
         whenever sample's device is changed:
             refresh view
 
@@ -161,8 +161,8 @@ class BlockDiagramEditorView(QGroupBox):
     signals they are.
     """
 
-    dataChanged = Signal()
-    dataChangePushed = Signal()
+    blockChanged = Signal()
+    refreshRequested = Signal()
 
     def __init__(self, block: Block, devices: List[Device], *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -170,10 +170,14 @@ class BlockDiagramEditorView(QGroupBox):
         self.block = block
         self.devices = devices
 
-        levels = getLevels(self.block, self.devices)
-        self.diagramWidget = BlockDiagramWidget()
-        self.sliderWidget = LabeledSlider(levels)
+        self.refreshRequested.connect(lambda: print("refresh requested"))
 
+        levels = get_levels(self.block, self.devices)
+        self.sliderWidget = LabeledSlider(levels)
+        self.sliderWidget.slider.valueChanged.connect(lambda: self.updateLevel())
+        self.diagramWidget = BlockDiagramWidget()
+
+        # UI
         layout = QHBoxLayout()
         layout.addWidget(self.sliderWidget, 0)
         layout.addWidget(self.diagramWidget, 1)
@@ -184,13 +188,6 @@ class BlockDiagramEditorView(QGroupBox):
         self.setTitle("Block Diagram")
         self.setContentsMargins(0, 0, 0, 0)
 
-        self.sliderWidget.slider.valueChanged.connect(lambda: self.updateLevel())
-
-        def onDataChangePush():
-            self.initIndicators()
-            self.updateSlider()
-
-        self.dataChangePushed.connect(onDataChangePush)
         self.initIndicators()
 
     def initIndicators(self):
@@ -206,55 +203,62 @@ class BlockDiagramEditorView(QGroupBox):
 
         for i in range(len(self.block.samples)):
             sample = self.block.samples[i]
-            vector = self.block.vectors[i]
+            vector = sample.vector
 
-            deviceName = sample.deviceName
-            device = next(d for d in self.devices if d.name == deviceName)
-            angledLabels: List[AngledLabel] = [
-                (f.name, f.angle) for f in device.payload if f.level == level
-            ]
+            deviceName = sample.device_name
+            device = next((d for d in self.devices if d.name == deviceName), None)
+            angledLabels: List[AngledLabel] = (
+                [
+                    (f.name, f.angle)
+                    for f in device.payload
+                    if (
+                        (f.level == level)
+                        and ((f.name is not None) or (f.name != ""))
+                        and (f.angle is not None)
+                    )
+                ]
+                if (device is not None)
+                else []
+            )
 
-            if vector.pos is None:
-                vector.pos = center
-            if vector.angle is None:
-                vector.angle = 0
+            # TODO: refactor points from List[int] to a dataclass
+            if vector.pos[0] is None:
+                vector.pos[0] = center[0]
+            if vector.pos[1] is None:
+                vector.pos[1] = center[1]
 
             # clip outside positions to max value
-            _pos = list(vector.pos)
             if vector.pos[0] > width:
-                _pos[0] = width
+                vector.pos[0] = width
             if vector.pos[1] > height:
-                _pos[1] = height
-            vector.pos = tuple(_pos)
+                vector.pos[1] = height
 
             indicator = IndicatorItem(i)
             self.diagramWidget.scene.addItem(indicator)
             self.indicators.append(indicator)
 
             indicator.setText(sample.name + "\n" + device.name)
-            indicator.angle = vector.angle  # TODO: don't mix setter methods like this
+            indicator.angle = vector.angle  # mixing Qt and python here...
             indicator.setAngledLabels(angledLabels)
             indicator.setPos(vector.pos[0], vector.pos[1])
 
-            def update(indicator: IndicatorItem = indicator):
+            def update(indicator: IndicatorItem):
                 # need to maintain reference to indicator
-                vector = self.block.vectors[indicator.index]
+                vector = self.block.samples[indicator.index].vector
                 vector.pos = (
                     int(indicator.pos().x()),
                     int(indicator.pos().y()),
                 )
                 vector.angle = indicator.angle
-                self.dataChanged.emit()
+                self.blockChanged.emit()
 
-            indicator.emptySignal.changed.connect(update)
+            indicator.indicatorChanged.connect(lambda ind=indicator: update(ind))
 
     def updateLevel(self):
         level = self.sliderWidget.label
 
-        for i, (sample, vector) in enumerate(
-            zip(self.block.samples, self.block.vectors)
-        ):
-            deviceName = sample.deviceName
+        for i, sample in enumerate(self.block.samples):
+            deviceName = sample.device_name
             device = next(d for d in self.devices if d.name == deviceName)
             angledLabels: List[AngledLabel] = [
                 (f.name, f.angle) for f in device.payload if f.level == level
@@ -264,8 +268,8 @@ class BlockDiagramEditorView(QGroupBox):
             indicator.setAngledLabels(angledLabels)
 
     def updateSlider(self) -> None:
-        levels = getLevels(self.block, self.devices)
-        value = self.sliderWidget.value
+        levels = get_levels(self.block, self.devices)
+        currentValue = self.sliderWidget.value
 
         # remove old slider
         layout: QHBoxLayout = self.layout()
@@ -274,8 +278,12 @@ class BlockDiagramEditorView(QGroupBox):
 
         # create new slider
         self.sliderWidget = LabeledSlider(levels)
-        self.sliderWidget.value = value
+        self.sliderWidget.value = currentValue
         layout.insertWidget(0, self.sliderWidget)
 
-        self.sliderWidget.slider.valueChanged.connect(self.updateLevel)
+        self.sliderWidget.slider.valueChanged.connect(lambda: self.updateLevel())
         self.updateLevel()
+
+    def refresh(self):
+        self.initIndicators()
+        self.updateSlider()

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Any
 
@@ -27,11 +27,26 @@ class AngularDirection(Enum):
 
 @dataclass
 class Device(Serializable):
-    name: str
-    longitudinal_orientation: LongitudinalOrientation
-    longitudinal_direction: LongitudinalDirection
-    angular_direction: AngularDirection
-    payload: List[Formulation]
+    name: str = ""
+    longitudinal_orientation: LongitudinalOrientation = None
+    longitudinal_direction: LongitudinalDirection = None
+    angular_direction: AngularDirection = None
+    payload: List[Formulation] = field(default_factory=list)
+
+    def is_formulations_unique(self) -> bool:
+        levels_angles = [(f.level, f.angle) for f in self.payload]
+        levels_angles_as_set = set(levels_angles)
+        return len(levels_angles) == len(levels_angles_as_set)
+
+    def is_valid(self) -> bool:
+        return (
+            (self.name != "")
+            and (self.longitudinal_orientation is not None)
+            and (self.longitudinal_direction is not None)
+            and (self.angular_direction is not None)
+            and all(f.is_valid() for f in self.payload)
+            and self.is_formulations_unique()
+        )
 
     def as_dict(self) -> Dict[str, Any]:
         return {

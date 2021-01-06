@@ -2,7 +2,7 @@ import logging
 
 from .view import AnnotationView
 from ..editor import Editor
-from ..session import Session
+from ..viewermodel import ViewerModel
 
 
 class AnnotationEditor(Editor):
@@ -10,7 +10,7 @@ class AnnotationEditor(Editor):
 
     name = "Annotation"
 
-    def __init__(self, model: Session, *args, **kwargs):
+    def __init__(self, model: ViewerModel, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.model = model

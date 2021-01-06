@@ -115,7 +115,8 @@ def parse_svs_metadata(s: str):
 
 def create_store(path: Path, name: str, level: int) -> ZarrTiffStore:
     with TiffFile(str(path)) as file:
-        series = next(s for s in file.series if s.name == name)
+        series: List[TiffPageSeries] = file.series
+        series: TiffPageSeries = next(s for s in series if s.name == name)
         return series.aszarr(level)
 
 

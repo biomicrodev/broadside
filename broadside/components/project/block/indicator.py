@@ -3,7 +3,15 @@ import time
 from typing import List, Tuple
 
 from PySide2.QtCore import QObject, Signal, Qt, QPointF, QRectF
-from PySide2.QtGui import QPen, QMouseEvent, QPolygonF, QPainter, QPainterPath
+from PySide2.QtGui import (
+    QPen,
+    QMouseEvent,
+    QPolygonF,
+    QPainter,
+    QPainterPath,
+    QTextBlockFormat,
+    QTextCursor,
+)
 from PySide2.QtWidgets import (
     QWidget,
     QGraphicsEllipseItem,
@@ -15,22 +23,12 @@ from PySide2.QtWidgets import (
     QStyleOptionGraphicsItem,
     QGraphicsScene,
     QGraphicsLineItem,
+    QGraphicsObject,
 )
 
+from ....utils import clip_angle
+
 AngledLabel = Tuple[str, float]
-
-
-class EmptySignal(QObject):
-    """
-    We need these weird class because multiple inheritance with Qt (that is, a class
-    that inherits from both QGraphicsItem and QObject) throws some kind of segfault.
-    """
-
-    changed = Signal()
-
-
-class FloatSignal(QObject):
-    changed = Signal(float)
 
 
 class CircleItem(QGraphicsEllipseItem):
@@ -45,8 +43,6 @@ class CircleItem(QGraphicsEllipseItem):
         self.setRect(-self.radius, -self.radius, self.radius * 2, self.radius * 2)
         self.setCursor(Qt.OpenHandCursor)
 
-        self.dataChanged = EmptySignal()
-
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         self.setCursor(Qt.ClosedHandCursor)
         super().mousePressEvent(event)
@@ -56,14 +52,18 @@ class CircleItem(QGraphicsEllipseItem):
         self.setCursor(Qt.OpenHandCursor)
 
 
+class FSignal(QObject):
+    changed = Signal(float)
+
+
 class FiducialItem(QGraphicsPolygonItem):
     size = 16
 
-    def __init__(self, *args, offset: float, angleSignal: FloatSignal, **kwargs):
+    def __init__(self, *args, offset: float, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.offset = offset
-        self.angleSignal = angleSignal
+        self.angleSignal = FSignal()
 
         self.setBrush(Qt.black)
         self.setFlags(QGraphicsItem.ItemIsMovable)
@@ -89,11 +89,7 @@ class FiducialItem(QGraphicsPolygonItem):
         dy = pos.y() - center.y()
         dx = pos.x() - center.x()
         angle = math.degrees(math.atan2(dy, dx))
-
-        angle = math.fmod(angle, 360.0)
-        if angle < 0.0:
-            angle += 360.0
-        angle = round(angle)
+        angle = clip_angle(angle)
 
         self.setAngle(angle)
         self.angleSignal.changed.emit(angle)
@@ -180,7 +176,25 @@ class LabelsItem(QGraphicsItemGroup):
             )
 
 
-class IndicatorItem(QGraphicsItem):
+class AlignedGraphicsTextItem(QGraphicsTextItem):
+    format = QTextBlockFormat()
+
+    def setText(self, text: str, alignment: Qt.Alignment = Qt.AlignCenter) -> None:
+        super().setPlainText(text)
+
+        self.format.setAlignment(alignment)
+
+        cursor: QTextCursor = self.textCursor()
+        cursor.select(QTextCursor.Document)
+        cursor.mergeBlockFormat(self.format)
+        cursor.clearSelection()
+
+        self.setTextCursor(cursor)
+
+
+class IndicatorItem(QGraphicsObject):
+    indicatorChanged = Signal()
+
     def __init__(self, index: int, *args, initAngle: float = 0, **kwargs):
         super().__init__(*args, **kwargs)
         self._lastUpdated = None
@@ -189,35 +203,30 @@ class IndicatorItem(QGraphicsItem):
         self.setFlags(QGraphicsItem.ItemIsMovable)
 
         self.angle = initAngle
-        self.angleSignal = FloatSignal()
-        self.emptySignal = EmptySignal()  # naming these things sucks
 
         self.circleItem = CircleItem(self)
-        self.textItem = QGraphicsTextItem(self.circleItem)
+        self.textItem = AlignedGraphicsTextItem(self.circleItem)
         self.labelsItem = LabelsItem(self.circleItem, radius=CircleItem.radius)
-        self.fiducialItem = FiducialItem(
-            self.circleItem, offset=CircleItem.radius, angleSignal=self.angleSignal
-        )
+        self.fiducialItem = FiducialItem(self.circleItem, offset=CircleItem.radius)
 
-        def angleChanged(angle):
+        def angleChanged(angle: float) -> None:
             self.angle = angle
 
             self.fiducialItem.setAngle(angle)
             self.labelsItem.setAngle(angle)
 
-            self.dataChanged()
+            self.dataChangedRaw()
 
-        self.circleItem.dataChanged.changed.connect(self.emptySignal.changed.emit)
-
-        self.angleSignal.changed.connect(lambda angle: angleChanged(angle))
+        self.fiducialItem.angleSignal.changed.connect(lambda angle: angleChanged(angle))
         angleChanged(self.angle)
 
     def setText(self, s: str) -> None:
-        self.textItem.setPlainText(s)
+        self.textItem.setText(s)
         self.textItem.setPos(
             -self.textItem.boundingRect().width() / 2,
             -self.textItem.boundingRect().height() / 2,
         )
+        self.textItem.setTextWidth(self.textItem.boundingRect().width())
 
     def setAngledLabels(self, labels: List[AngledLabel]):
         self.labelsItem.setLabels(labels, self.angle)
@@ -268,13 +277,13 @@ class IndicatorItem(QGraphicsItem):
             y = height
         self.setPos(x, y)
 
-        self.dataChanged()
+        self.dataChangedRaw()
 
-    def dataChanged(self):
+    def dataChangedRaw(self):
         # really basic rate-limiting
         now = time.monotonic()
         if (self._lastUpdated is None) or (
-            (self._lastUpdated is not None) and (now - self._lastUpdated > 0.1)
+            (self._lastUpdated is not None) and (now - self._lastUpdated > 0.00)
         ):
             self._lastUpdated = now
-            self.emptySignal.changed.emit()
+            self.indicatorChanged.emit()

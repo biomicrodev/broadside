@@ -1,6 +1,6 @@
 import logging
 
-from PySide2.QtCore import Qt
+from PySide2.QtCore import Qt, QSize
 from PySide2.QtWidgets import (
     QWidget,
     QLabel,
@@ -31,9 +31,6 @@ class ProjectView(QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.initUI()
-
-    def initUI(self) -> None:
         statusWidget = self.initStatusWidget()
         noProjectSelectedLabel = createNoProjectSelectedLabel()
 
@@ -47,6 +44,7 @@ class ProjectView(QWidget):
 
     def initStatusWidget(self) -> QWidget:
         selectProjectButton = QPushButton()
+        selectProjectButton.setCursor(Qt.PointingHandCursor)
         selectProjectButton.setObjectName("selectProjectButton")
         selectProjectButton.setText("Select project")
         self.selectProjectButton = selectProjectButton
@@ -104,16 +102,15 @@ class ProjectView(QWidget):
         parentWidget.setFixedWidth(250)
         return parentWidget
 
-    def onProjectSelected(
+    def updateView(
         self,
         *,
-        description: str,
         deviceListView: QWidget,
         blockListView: QWidget,
+        panelListView: QWidget,
         imageListView: QWidget
     ) -> None:
         descriptionTextEdit = QPlainTextEdit()
-        descriptionTextEdit.setPlainText(description)
         self.descriptionTextEdit = descriptionTextEdit
 
         descriptionLayout = QVBoxLayout()
@@ -129,10 +126,14 @@ class ProjectView(QWidget):
         tabWidget.setTabPosition(QTabWidget.North)
         tabWidget.addTab(deviceListView, "Devices")
         tabWidget.addTab(blockListView, "Blocks")
+        tabWidget.addTab(panelListView, "Panels")
         tabWidget.addTab(imageListView, "Images")
+        self.tabWidget = tabWidget
 
-        # whenever user clicks on a tab, refresh it
-        tabWidget.tabBarClicked.connect(lambda index: tabWidget.widget(index).refresh())
+        # whenever user clicks on a tab, refresh it (devices, blocks, panels, or images)
+        tabWidget.currentChanged.connect(
+            lambda index: tabWidget.widget(index).refresh()
+        )
 
         settingsLayout = QVBoxLayout()
         settingsLayout.addWidget(descriptionBox, stretch=0)

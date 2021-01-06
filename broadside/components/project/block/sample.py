@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Type
 
 from PySide2.QtCore import (
     Signal,
@@ -10,11 +10,11 @@ from PySide2.QtCore import (
     QItemSelectionModel,
     QAbstractListModel,
     QRect,
+    QAbstractItemModel,
 )
 from PySide2.QtWidgets import (
     QWidget,
     QTableView,
-    QHeaderView,
     QAbstractItemView,
     QPushButton,
     QHBoxLayout,
@@ -22,12 +22,14 @@ from PySide2.QtWidgets import (
     QStyledItemDelegate,
     QStyleOptionViewItem,
     QComboBox,
+    QHeaderView,
     QLineEdit,
 )
 from natsort import natsort_keygen
 
-from .. import CellState, LineEditItemDelegate
-from ...models.block import Sample, Vector, Block
+from ...utils import CellState, LineEditItemDelegate
+from ....models.block import Sample, Block
+from ....models.device import Device
 
 
 def getCohorts(samples: List[Sample]) -> List[str]:
@@ -43,7 +45,6 @@ class SampleTableModel(QAbstractTableModel):
         super().__init__(*args, **kwargs)
 
         self.samples: List[Sample] = block.samples
-        self.vectors: List[Vector] = block.vectors
 
     def getItem(self, index: QModelIndex) -> Tuple[str, Any]:
         row = index.row()
@@ -130,16 +131,16 @@ class SampleTableModel(QAbstractTableModel):
             if not index.isValid():
                 return False
 
-            key, _ = self.getItem(index)
-            if key == "name":
-                name = value
-                otherNames = [
-                    s.name for i, s in enumerate(self.samples) if i != index.row()
-                ]
-                if name in otherNames:
-                    return False
-                else:
-                    return self.setItem(index, value)
+            # key, _ = self.getItem(index)
+            # if key == "name":
+            # name = value
+            # otherNames = [
+            #     s.name for i, s in enumerate(self.samples) if i != index.row()
+            # ]
+            # if name in otherNames:
+            #     return False
+            # else:
+            #     return self.setItem(index, value)
 
             return self.setItem(index, value)
 
@@ -177,8 +178,7 @@ class SampleTableModel(QAbstractTableModel):
 
         index = self.rowCount()
         self.beginInsertRows(QModelIndex(), index, index)
-        self.samples.append(Sample.from_dict({}))
-        self.vectors.append(Vector.from_dict({}))
+        self.samples.append(Sample.from_dict({"name": f"New sample {index+1}"}))
         self.endInsertRows()
 
         self.layoutChanged.emit()
@@ -188,10 +188,19 @@ class SampleTableModel(QAbstractTableModel):
 
         self.beginRemoveRows(QModelIndex(), index, index + 1)
         del self.samples[index]
-        del self.vectors[index]
         self.endRemoveRows()
 
         self.layoutChanged.emit()
+
+    def sortSamples(self) -> None:
+        natsort = natsort_keygen(
+            key=lambda s: (s.name is None, s.device_name is None, s.name, s.device_name)
+        )
+
+        oldSamples = copy.copy(self.samples)
+        self.samples.sort(key=natsort)
+        if self.samples != oldSamples:
+            self.layoutChanged.emit()
 
     def addCohort(self) -> None:
         self.layoutAboutToBeChanged.emit()
@@ -243,32 +252,84 @@ class SampleTableModel(QAbstractTableModel):
         self.layoutChanged.emit()
 
 
-class DeviceNamesModel(QAbstractListModel):
-    def __init__(self, names: List[str] = None, *args, **kwargs):
+class SampleTableHeaderView(QHeaderView):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.names = names or []
+        self.setStretchLastSection(True)
+
+        lineEdit = QLineEdit(self.viewport())
+        lineEdit.setAlignment(Qt.AlignCenter)
+        lineEdit.setHidden(True)
+        lineEdit.blockSignals(True)
+        lineEdit.editingFinished.connect(self.finishEdit)
+        self.lineEdit = lineEdit
+
+        self.sectionEdit = 0
+
+        self.sectionDoubleClicked.connect(self.startEdit)
+
+    def startEdit(self, section: int) -> None:
+        if section < 2:
+            return
+
+        model: SampleTableModel = self.model()
+        cohorts = getCohorts(model.samples)
+        key = cohorts[section - len(Sample.keys)]
+
+        editRect: QRect = self.lineEdit.geometry()
+        editRect.setLeft(self.sectionPosition(section))
+        editRect.setWidth(self.sectionSize(section))
+        editRect.setTop(0)
+        editRect.setHeight(self.height())
+
+        self.lineEdit.setText(str(key))
+        self.lineEdit.move(editRect.topLeft())
+        self.lineEdit.resize(editRect.size())
+        self.lineEdit.setFrame(False)
+        self.lineEdit.setHidden(False)
+        self.lineEdit.blockSignals(False)
+        self.lineEdit.setFocus()
+        self.lineEdit.selectAll()
+
+        self.sectionEdit = section
+
+    def finishEdit(self) -> None:
+        value = str(self.lineEdit.text())
+        self.lineEdit.blockSignals(True)
+        self.lineEdit.setHidden(True)
+        self.lineEdit.setText("")
+
+        model: SampleTableModel = self.model()
+        model.updateCohort(self.sectionEdit, value)
+
+        # purely for focusing reasons
+        index: QModelIndex = model.createIndex(0, self.sectionEdit)
+        view: SampleTableView = self.parent()
+        view.setCurrentIndex(index)
+
+
+class DeviceNamesModel(QAbstractListModel):
+    """
+    Use a proxy model here possibly? looks like the proxy model needs a base model to
+    already exist, which we don't use (actually we do, just elsewhere). maybe use that
+    here
+    """
+
+    def __init__(self, devices: List[Device], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.devices = devices
 
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
         if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
-            return str(self.names[index.row()])
+            return str(self.devices[index.row()].name)
 
         elif role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
 
-    def updateNames(self, names: List[str]) -> None:
-        if self.names == names:
-            return
-
-        self.layoutAboutToBeChanged.emit()
-
-        self.names.clear()
-        self.names.extend(names)
-
-        self.layoutChanged.emit()
-
     def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
-        return len(self.names)
+        return len(self.devices)
 
 
 class DeviceComboBoxDelegate(QStyledItemDelegate):
@@ -295,63 +356,6 @@ class DeviceComboBoxDelegate(QStyledItemDelegate):
         return editor
 
 
-class HeaderView(QHeaderView):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.setStretchLastSection(True)
-
-        lineEdit = QLineEdit(self.viewport())
-        lineEdit.setAlignment(Qt.AlignCenter)
-        lineEdit.setHidden(True)
-        lineEdit.blockSignals(True)
-        lineEdit.editingFinished.connect(self.doneEditing)
-        self.lineEdit = lineEdit
-
-        self.sectionEdit = 0
-
-        self.sectionDoubleClicked.connect(self.editHeader)
-
-    def doneEditing(self):
-        value = str(self.lineEdit.text())
-        self.lineEdit.blockSignals(True)
-        self.lineEdit.setHidden(True)
-        self.lineEdit.setText("")
-
-        model: SampleTableModel = self.model()
-        model.updateCohort(self.sectionEdit, value)
-
-        # purely for focusing reasons
-        index: QModelIndex = model.createIndex(0, self.sectionEdit)
-        view: SampleTableView = self.parent()
-        view.setCurrentIndex(index)
-
-    def editHeader(self, section: int):
-        if section < 2:
-            return
-
-        model: SampleTableModel = self.model()
-        cohorts = getCohorts(model.samples)
-        key = cohorts[section - len(Sample.keys)]
-
-        editRect: QRect = self.lineEdit.geometry()
-        editRect.setLeft(self.sectionPosition(section))
-        editRect.setWidth(self.sectionSize(section))
-        editRect.setTop(0)
-        editRect.setHeight(self.height())
-
-        self.lineEdit.setText(str(key))
-        self.lineEdit.move(editRect.topLeft())
-        self.lineEdit.resize(editRect.size())
-        self.lineEdit.setFrame(False)
-        self.lineEdit.setHidden(False)
-        self.lineEdit.blockSignals(False)
-        self.lineEdit.setFocus()
-        self.lineEdit.selectAll()
-
-        self.sectionEdit = section
-
-
 class SampleTableView(QTableView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -365,45 +369,70 @@ class SampleTableView(QTableView):
         self.deviceComboBoxDelegate = deviceComboBoxDelegate
         self.setItemDelegateForColumn(1, deviceComboBoxDelegate)
 
-        horizontalHeader = HeaderView(Qt.Horizontal, self)
+        horizontalHeader = SampleTableHeaderView(Qt.Horizontal, self)
         self.setHorizontalHeader(horizontalHeader)
+
+    def sampleAdded(self) -> None:
+        model: Type[QAbstractItemModel] = self.model()
+
+        row = model.rowCount() - 1
+        column = 0
+        modelIndex = model.createIndex(row, column)
+        self.view.setCurrentIndex(modelIndex)
+        self.view.setFocus()
+
+    def sampleDeleted(self, index: QModelIndex) -> None:
+        model: Type[QAbstractItemModel] = self.model()
+        nRows = model.rowCount()
+        row = index.row()
+        column = index.column()
+
+        if row != nRows:  # row is already deleted
+            modelIndex = model.createIndex(row, column)
+            self.setCurrentIndex(modelIndex)
+            self.setFocus()
 
 
 class SampleTableEditorView(QWidget):
+
     log = logging.getLogger(__name__)
 
-    dataChanged = Signal()
+    samplesChanged = Signal()
 
-    def __init__(self, block: Block, *args, **kwargs):
+    def __init__(self, block: Block, devices: List[Device], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.model = SampleTableModel(block)
-        self.model.dataChanged.connect(lambda _: self.dataChanged.emit())
-        self.model.layoutChanged.connect(lambda: self.dataChanged.emit())
+        self.devices = devices
 
+        self.model = SampleTableModel(block)
         self.view = SampleTableView()
         self.view.setModel(self.model)
 
-        deviceNamesModel = DeviceNamesModel()
-        self.deviceNamesModel = deviceNamesModel
-        self.view.deviceComboBoxDelegate.setModel(deviceNamesModel)
+        self.model.dataChanged.connect(lambda _: self.samplesChanged.emit())
+        self.model.layoutChanged.connect(lambda: self.samplesChanged.emit())
+
+        self.deviceNamesModel = DeviceNamesModel(devices)
+        self.view.deviceComboBoxDelegate.setModel(self.deviceNamesModel)
 
         self.initUI()
-        self.initReactivity()
+        self.initBindings()
 
     def initUI(self):
         addSampleButton = QPushButton()
         addSampleButton.setText("Add sample")
+        addSampleButton.setCursor(Qt.PointingHandCursor)
         self.addSampleButton = addSampleButton
 
         deleteSampleButton = QPushButton()
         deleteSampleButton.setText("Delete sample")
         deleteSampleButton.setObjectName("deleteSampleButton")
         deleteSampleButton.setDisabled(True)
+        deleteSampleButton.setCursor(Qt.ForbiddenCursor)
         self.deleteSampleButton = deleteSampleButton
 
         sortSamplesButton = QPushButton()
         sortSamplesButton.setText("Sort")
+        sortSamplesButton.setCursor(Qt.PointingHandCursor)
         self.sortSamplesButton = sortSamplesButton
 
         buttonsLayout = QHBoxLayout()
@@ -413,12 +442,14 @@ class SampleTableEditorView(QWidget):
 
         addCohortButton = QPushButton()
         addCohortButton.setText("Add cohort")
+        addCohortButton.setCursor(Qt.PointingHandCursor)
         self.addCohortButton = addCohortButton
 
         deleteCohortButton = QPushButton()
         deleteCohortButton.setText("Delete cohort")
         deleteCohortButton.setObjectName("deleteCohortButton")
         deleteCohortButton.setDisabled(True)
+        deleteCohortButton.setCursor(Qt.ForbiddenCursor)
         self.deleteCohortButton = deleteCohortButton
 
         cohortsButtonsLayout = QHBoxLayout()
@@ -433,66 +464,24 @@ class SampleTableEditorView(QWidget):
 
         self.setLayout(layout)
 
-    def initReactivity(self):
-        def updateButtons():
-            indexes: List[QModelIndex] = self.view.selectedIndexes()
-
-            # enable delete sample button if anything is selected
-            nRows = self.model.rowCount()
-            indexes = [index for index in indexes if index.row() < nRows]
-            self.deleteSampleButton.setEnabled(len(indexes) > 0)
-
-            # enable delete cohort button if cohort columns are selected
-            if len(indexes) > 0:
-                index: QModelIndex = indexes[0]
-                column = index.column()
-                self.deleteCohortButton.setEnabled(column >= len(Sample.keys))
-            else:
-                self.deleteCohortButton.setEnabled(False)
-
-        selectionModel: QItemSelectionModel = self.view.selectionModel()
-        selectionModel.selectionChanged.connect(lambda: updateButtons())
-
+    def initBindings(self):
         def addSample():
             self.model.addSample()
-
-            # set focus to newly added sample
-            row = self.model.rowCount() - 1
-            column = 0
-            modelIndex = self.model.createIndex(row, column)
-            self.view.setCurrentIndex(modelIndex)
-            self.view.setFocus()
+            self.view.sampleAdded()
 
         self.addSampleButton.clicked.connect(lambda: addSample())
 
         def deleteSample():
-            # after deleting row, need to re-set index
             index: QModelIndex = self.view.selectedIndexes()[0]
             row = index.row()
-            column = index.column()
 
             self.model.deleteSample(row)
-
-            # set focus
-            modelIndex = self.model.createIndex(row, column)
-            self.view.setCurrentIndex(modelIndex)
-            self.view.setFocus()
+            self.view.sampleDeleted(index)
+            self.updateButtons()
 
         self.deleteSampleButton.clicked.connect(lambda: deleteSample())
 
-        natsort = natsort_keygen(
-            key=lambda s: (s.name is None, s.deviceName is None, s.name, s.deviceName)
-        )
-
-        def sort():
-            # copying like this is okay since this list won't ever be more than 40
-            # samples
-            oldSamples = copy.copy(self.model.samples)
-            self.model.samples.sort(key=natsort)
-            if self.model.samples != oldSamples:
-                self.model.layoutChanged.emit()
-
-        self.sortSamplesButton.clicked.connect(lambda: sort())
+        self.sortSamplesButton.clicked.connect(lambda: self.model.sortSamples())
 
         def updateLineEditItemDelegates():
             nColumns = self.model.columnCount()
@@ -513,3 +502,33 @@ class SampleTableEditorView(QWidget):
             self.model.deleteCohort(index.column())
 
         self.deleteCohortButton.clicked.connect(lambda: deleteCohort())
+
+        selectionModel: QItemSelectionModel = self.view.selectionModel()
+        selectionModel.selectionChanged.connect(lambda: self.updateButtons())
+        self.updateButtons()
+
+    def updateButtons(self) -> None:
+        indexes: List[QModelIndex] = self.view.selectedIndexes()
+
+        # enable delete sample button if anything is selected
+        self.deleteSampleButton.setEnabled(len(indexes) > 0)
+        self.deleteSampleButton.setCursor(
+            Qt.PointingHandCursor if (len(indexes) > 0) else Qt.ForbiddenCursor
+        )
+
+        # enable delete cohort button if cohort columns are selected
+        if len(indexes) > 0:
+            index: QModelIndex = indexes[0]
+            column = index.column()
+            self.deleteCohortButton.setEnabled(column >= len(Sample.keys))
+            self.deleteCohortButton.setCursor(
+                Qt.PointingHandCursor
+                if (column >= len(Sample.keys))
+                else Qt.ForbiddenCursor
+            )
+        else:
+            self.deleteCohortButton.setEnabled(False)
+            self.deleteCohortButton.setCursor(Qt.ForbiddenCursor)
+
+    def refresh(self) -> None:
+        self.deviceNamesModel.layoutChanged.emit()
