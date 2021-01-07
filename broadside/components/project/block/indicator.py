@@ -53,6 +53,11 @@ class CircleItem(QGraphicsEllipseItem):
 
 
 class FSignal(QObject):
+    """
+    This is pretty awkward, but it's not possible to inherit both QGraphicsItems and
+    QObjects.
+    """
+
     changed = Signal(float)
 
 

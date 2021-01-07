@@ -47,6 +47,9 @@ class Vector:
 
         return cls(pos=pos, angle=angle)
 
+    def __repr__(self) -> str:
+        return f"Vector(pos={self.pos}, angle={self.angle})"
+
 
 @dataclass
 class Sample(Serializable):

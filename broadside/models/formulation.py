@@ -38,3 +38,6 @@ class Formulation(Serializable):
         name = dct.get("name", "")
 
         return cls(level=level, angle=angle, name=name)
+
+    def __repr__(self) -> str:
+        return f"Formulation(level={self.level}, angle={self.angle}, name={self.name})"

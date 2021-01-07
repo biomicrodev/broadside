@@ -24,6 +24,9 @@ class PointF:
     def y(self, val: float) -> None:
         self._y = float(val)
 
+    def __repr__(self) -> str:
+        return f"PointF(x={self.x}, y={self.y})"
+
 
 class PointI:
     def __init__(self, /, x: int = None, y: int = None):
@@ -48,6 +51,9 @@ class PointI:
 
     def is_valid(self) -> bool:
         return (self.x is not None) and (self.y is not None)
+
+    def __repr__(self) -> str:
+        return f"PointI(x={self.x}, y={self.y})"
 
 
 def clip_angle(val: float) -> float:

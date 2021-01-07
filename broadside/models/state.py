@@ -5,6 +5,7 @@ from typing import List, Set
 
 from .block import Block
 from .device import Device, NO_DEVICE
+from .image import read_images
 from .panel import Panel
 from .task_graph import TaskGraph
 
@@ -60,8 +61,7 @@ class State:
         self.task_graph: TaskGraph = task_graph
 
         # derived properties
-        images = []
-        self.images = images
+        self.images = read_images(filepath / self.images_dir)
 
     def save(self) -> None:
         """
@@ -131,3 +131,14 @@ class State:
                 invalid.update(indexes)
 
         return invalid
+
+    def __repr__(self) -> str:
+        return (
+            f"State("
+            f"description={self.description}, "
+            f"devices={self.devices}, "
+            f"blocks={self.blocks}, "
+            f"panels={self.panels}, "
+            f"task_graph={self.task_graph}"
+            f")"
+        )

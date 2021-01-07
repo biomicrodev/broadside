@@ -15,3 +15,6 @@ class TaskGraph(Serializable):
     @classmethod
     def from_dict(cls, dct: Dict[str, Any]) -> "TaskGraph":
         return cls()
+
+    def __repr__(self) -> str:
+        return f"TaskGraph()"
