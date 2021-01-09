@@ -203,7 +203,7 @@ class DeviceListEditor(Editor):
         super().__init__(*args, **kwargs)
 
         self.model = model
-        self.devices = model.devices  # for convenience, mostly
+        self.devices = model.state.devices  # for convenience, mostly
         self.view = DeviceListEditorView()
 
         # set up bindings

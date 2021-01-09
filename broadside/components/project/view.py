@@ -130,7 +130,7 @@ class ProjectView(QWidget):
         tabWidget.addTab(imageListView, "Images")
         self.tabWidget = tabWidget
 
-        # whenever user clicks on a tab, refresh it (devices, blocks, panels, or images)
+        # whenever user clicks on a tab, refresh it (devices, blocks, panels, or image)
         tabWidget.currentChanged.connect(
             lambda index: tabWidget.widget(index).refresh()
         )

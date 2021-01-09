@@ -5,7 +5,7 @@ from typing import List, Set
 
 from .block import Block
 from .device import Device, NO_DEVICE
-from .image import read_images
+from .image import Image
 from .panel import Panel
 from .task_graph import TaskGraph
 
@@ -22,7 +22,7 @@ class State:
     log = logging.getLogger(__name__)
 
     filename: str = "project.json"
-    images_dir: str = "images"
+    images_dir: str = "image"
 
     def __init__(self, path: Path):
         self.path = path
@@ -36,7 +36,7 @@ class State:
                 self.log.info(f"Project settings read from {str(filepath)}")
             except json.decoder.JSONDecodeError:
                 state = {}
-                self.log.info(f"Read settings failed; using default values")
+                self.log.info("Read settings failed; using default values")
         else:
             state = {}
             self.log.info("Project file not found; using default values")
@@ -60,8 +60,8 @@ class State:
         self.panels: List[Panel] = panels
         self.task_graph: TaskGraph = task_graph
 
-        # derived properties
-        self.images = read_images(filepath / self.images_dir)
+        # don't load yet, since this takes some time
+        self.images: List[Image] = []
 
     def save(self) -> None:
         """

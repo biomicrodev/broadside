@@ -59,7 +59,7 @@ class Sample(Serializable):
     vector: Vector = field(default_factory=Vector)
 
     keys = ["name", "device_name"]
-    headers = ["Name", "Device name"]
+    headers = ["Name", "Device"]
     types = [str, str]
 
     def is_valid(self) -> bool:

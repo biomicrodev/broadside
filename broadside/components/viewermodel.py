@@ -1,14 +1,10 @@
 import logging
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional
 
 from PySide2.QtCore import QObject, Signal
 
-from ..models.block import Block
-from ..models.device import Device
-from ..models.panel import Panel
 from ..models.state import State
-from ..models.task_graph import TaskGraph
 
 
 class ViewerModel(QObject):
@@ -111,32 +107,6 @@ class ViewerModel(QObject):
 
         self.state = State(val)
         self.pathChanged.emit()
-
-    @property
-    def description(self) -> Optional[str]:
-        return self.state.description if self.isSet else None
-
-    @description.setter
-    def description(self, val: str) -> None:
-        if self.isSet and (self.description != val):
-            self.state.description = val
-            self.isStale = True
-
-    @property
-    def devices(self) -> List[Device]:
-        return self.state.devices if self.isSet else []
-
-    @property
-    def blocks(self) -> List[Block]:
-        return self.state.blocks if self.isSet else []
-
-    @property
-    def panels(self) -> List[Panel]:
-        return self.state.panels if self.isSet else []
-
-    @property
-    def task_graph(self) -> Optional[TaskGraph]:
-        return self.state.task_graph if self.isSet else None
 
     def save(self) -> None:
         if not self.isSet:

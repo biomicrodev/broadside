@@ -140,7 +140,7 @@ class BlockListEditor(Editor):
         super().__init__(*args, **kwargs)
 
         self.model = model
-        self.blocks = model.blocks  # for convenience, mostly
+        self.blocks = model.state.blocks  # for convenience, mostly
         self.view = BlockListEditorView()
 
         # set up bindings
@@ -162,7 +162,7 @@ class BlockListEditor(Editor):
 
         # initialize
         for block in self.blocks:
-            self.view.addBlock(block, self.model.devices)
+            self.view.addBlock(block, self.model.state.devices)
         self.view.tabWidget.setCurrentIndex(0)
 
         self.validate()
@@ -171,7 +171,7 @@ class BlockListEditor(Editor):
         count = self.view.tabWidget.count() + 1
         block = Block.from_dict({"name": f"New block {count}"})
         self.blocks.append(block)
-        self.view.addBlock(block, self.model.devices)
+        self.view.addBlock(block, self.model.state.devices)
 
         self.blockListChanged.emit()
         self.log.info("New block added")

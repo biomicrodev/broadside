@@ -60,9 +60,7 @@ class ProjectEditor(Editor):
         self.deviceListEditor = DeviceListEditor(self.model)
         self.blockListEditor = BlockListEditor(self.model)
         self.panelListEditor = PanelListEditor(self.model)
-        self.imageListEditor = ImageListEditor()
-        # imageListEditor.dataChanged.connect(lambda: self.dataChanged.emit())
-        # self.imageListEditor = imageListEditor
+        self.imageListEditor = ImageListEditor(self.model)
 
         self.view.updateView(
             deviceListView=self.deviceListEditor.view,
@@ -106,11 +104,13 @@ class ProjectEditor(Editor):
 
         # any subsequent changes in this widget are propagated to model; the rest of
         # the views handle their own changes
-        self.view.descriptionTextEdit.setPlainText(self.model.description)
+        self.view.descriptionTextEdit.setPlainText(self.model.state.description)
 
         def setDescriptionText():
             description = self.view.descriptionTextEdit.toPlainText()
-            self.model.description = description
+            if self.model.state.description != description:
+                self.model.state.description = description
+                self.dataChanged.emit()
 
         self.view.descriptionTextEdit.textChanged.connect(lambda: setDescriptionText())
 

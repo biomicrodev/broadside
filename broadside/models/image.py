@@ -286,15 +286,3 @@ def normalize(path: Path) -> Optional[Image]:
                 background=pyramids[0],  # background pyramid
             )
             return Image(filepath=path, pixels=pixels)
-
-
-def read_images(path: Path) -> List[Image]:
-    filepaths = []
-    for root, dirs, files in os.walk(path):
-        root = Path(root)
-        for file in files:
-            filepaths.append(root / file)
-
-    images = [normalize(path) for path in filepaths]
-    images = [image for image in images if image]
-    return images

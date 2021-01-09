@@ -85,6 +85,7 @@ class PanelListEditor(Editor):
         super().__init__(*args, **kwargs)
 
         self.model = model
+        self.panels = model.state.panels
         self.view = PanelListEditorView()
 
         # set up bindings
@@ -98,14 +99,14 @@ class PanelListEditor(Editor):
 
         def updateName(index: int) -> None:
             name = tabWidget.tabText(index)
-            if self.model.panels[index].name != name:
-                self.model.panels[index].name = name
+            if self.panels[index].name != name:
+                self.panels[index].name = name
                 self.panelListChanged.emit()
 
         tabWidget.editingFinished.connect(lambda index: updateName(index))
 
         # initialize
-        for panel in self.model.panels:
+        for panel in self.panels:
             self.view.addPanel(panel)
         self.view.tabWidget.setCurrentIndex(0)
 
@@ -114,14 +115,14 @@ class PanelListEditor(Editor):
     def addPanel(self) -> None:
         count = self.view.tabWidget.count() + 1
         panel = Panel.from_dict({"name": f"New panel {count}"})
-        self.model.panels.append(panel)
+        self.panels.append(panel)
         self.view.addPanel(panel)
 
         self.panelListChanged.emit()
         self.log.info("New panel added")
 
     def deletePanel(self, index: int) -> None:
-        name = self.model.panels[index].name or "the current panel"
+        name = self.panels[index].name or "the current panel"
 
         response = showYesNoDialog(
             parent=self.view,
@@ -129,17 +130,14 @@ class PanelListEditor(Editor):
             text=f"Are you sure you want to delete {name}?",
         )
         if response == QMessageBox.Yes:
-            del self.model.panels[index]
+            del self.panels[index]
             self.view.deletePanel(index)
 
             self.panelListChanged.emit()
             self.log.info("Panel deleted")
 
     def movePanel(self, to_: int, from_: int) -> None:
-        (self.model.panels[to_], self.model.panels[from_]) = (
-            self.model.panels[from_],
-            self.model.panels[to_],
-        )
+        (self.panels[to_], self.panels[from_]) = (self.panels[from_], self.panels[to_])
 
         self.panelListChanged.emit()
         self.log.info(f"Panel moved to {to_} from {from_}")
