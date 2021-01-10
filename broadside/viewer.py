@@ -10,7 +10,7 @@ from .components.annotation import AnnotationEditor
 from .components.editor import Editor
 from .components.mainwindow import MainWindow
 from .components.navigation import Navigator
-from .components.project import ProjectEditor
+from .components.project import ProjectEditor, ImageListEditor
 from .components.utils import showSaveDialog, showSelectProjectDialog
 from .components.viewermodel import ViewerModel
 
@@ -109,6 +109,7 @@ class Viewer:
         self.log.info("About to close requested")
 
         if not self.model.isSet:
+            self.model.close()
             self.log.info("No project set; closing")
             event.accept()
             return
@@ -116,6 +117,7 @@ class Viewer:
         name = self.model.name
 
         if not self.model.isStale:
+            self.model.close()
             self.log.info(f"Project {name} has no changes; closing")
             event.accept()
             return
@@ -128,9 +130,11 @@ class Viewer:
         )
         if response == QMessageBox.Save:
             self.model.save()
+            self.model.close()
             self.log.info(f"Project {name} saved; closing")
             event.accept()
         elif response == QMessageBox.Discard:
+            self.model.close()
             self.log.info(f"Project {name} not saved; closing")
             event.accept()
         elif response == QMessageBox.Cancel:

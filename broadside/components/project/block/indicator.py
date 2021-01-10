@@ -166,19 +166,21 @@ class LabelsItem(QGraphicsItemGroup):
             self.textItems, self.lineItems, self.angledLabels
         ):
             labelAngle = math.radians(labelAngle)
+            labelAngle += angle
 
-            width = textItem.boundingRect().width()
-            height = textItem.boundingRect().height()
-            textItem.setPos(
-                (self.offset + width / 2) * math.cos(labelAngle + angle) - width / 2,
-                (self.offset + height / 4) * math.sin(labelAngle + angle) - height / 2,
-            )
+            width: float = textItem.boundingRect().width()
+            height: float = textItem.boundingRect().height()
 
             lineItem.setLine(
-                self.radius * math.cos(labelAngle + angle),
-                self.radius * math.sin(labelAngle + angle),
-                (self.radius + self.length) * math.cos(labelAngle + angle),
-                (self.radius + self.length) * math.sin(labelAngle + angle),
+                self.radius * math.cos(labelAngle),
+                self.radius * math.sin(labelAngle),
+                (self.radius + self.length) * math.cos(labelAngle),
+                (self.radius + self.length) * math.sin(labelAngle),
+            )
+
+            textItem.setPos(
+                (self.offset + width / 2) * math.cos(labelAngle) - width / 2,
+                (self.offset + height / 4) * math.sin(labelAngle) - height / 2,
             )
 
 

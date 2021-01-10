@@ -85,13 +85,25 @@ class ProjectEditor(Editor):
         self.panelListEditor.isValidChanged.connect(
             lambda: updateTabStyle(self.panelListEditor)
         )
+        self.imageListEditor.isValidChanged.connect(
+            lambda: updateTabStyle(self.imageListEditor)
+        )
         updateTabStyle(self.deviceListEditor)
         updateTabStyle(self.blockListEditor)
         updateTabStyle(self.panelListEditor)
+        updateTabStyle(self.imageListEditor)
 
         self.deviceListEditor.deviceListChanged.connect(lambda: self.dataChanged.emit())
         self.blockListEditor.blockListChanged.connect(lambda: self.dataChanged.emit())
         self.panelListEditor.panelListChanged.connect(lambda: self.dataChanged.emit())
+        self.imageListEditor.imageListChanged.connect(lambda: self.dataChanged.emit())
+
+        self.deviceListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+        self.blockListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+        self.panelListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+        self.imageListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+
+        self.isValidChanged.connect(lambda: self.validate())
 
         # set project labels
         path: Path = self.model.path
@@ -129,10 +141,15 @@ class ProjectEditor(Editor):
             self.panelListEditor.isValid if self.panelListEditor is not None else False
         )
 
+        isImageListEditorValid = (
+            self.imageListEditor.isValid if self.imageListEditor is not None else False
+        )
+
         self.isValid = (
             isDeviceListEditorValid
             and isBlockListEditorValid
             and isPanelListEditorValid
+            and isImageListEditorValid
             and self.model.isSet
         )
 

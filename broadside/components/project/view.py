@@ -141,13 +141,11 @@ class ProjectView(QWidget):
 
         # replace noProjectSelected label with the settings layout
         layout: QHBoxLayout = self.layout()
-        item: QLayoutItem = layout.itemAt(2)
+        item: QLayoutItem = layout.itemAt(2)  # after statusWidget and spacer
         if item.widget() is not None:
             item.widget().deleteLater()
-            layout.addLayout(settingsLayout, stretch=1)
-        elif item.layout() is not None:
-            item.layout().deleteLater()
-            layout.addLayout(settingsLayout, stretch=1)
+        layout.removeItem(item)
+        layout.addLayout(settingsLayout, stretch=1)
 
     def setProjectLabels(self, *, path: str, name: str) -> None:
         self.pathValueLabel.setText(path)

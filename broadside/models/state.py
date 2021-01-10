@@ -22,7 +22,7 @@ class State:
     log = logging.getLogger(__name__)
 
     filename: str = "project.json"
-    images_dir: str = "image"
+    images_dir: str = "images"
 
     def __init__(self, path: Path):
         self.path = path
@@ -134,11 +134,11 @@ class State:
 
     def __repr__(self) -> str:
         return (
-            f"State("
+            "State("
             f"description={self.description}, "
             f"devices={self.devices}, "
             f"blocks={self.blocks}, "
             f"panels={self.panels}, "
             f"task_graph={self.task_graph}"
-            f")"
+            ")"
         )

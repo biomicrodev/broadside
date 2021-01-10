@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from PySide2.QtCore import Qt, Signal
+from PySide2.QtCore import Qt, Signal, QEvent
 from PySide2.QtGui import QCloseEvent
 from PySide2.QtWidgets import (
     QMainWindow,
@@ -46,6 +46,7 @@ class MainWindow(QMainWindow):
         self.navWidget = navWidget
         self.theme = theme
 
+        self.hide()
         self.setFocusPolicy(Qt.StrongFocus)
         self.setWindowTitle("Broadside")
         self.setMinimumWidth(700)
