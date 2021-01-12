@@ -25,3 +25,6 @@ class Editor(QObject):
 
     def validate(self) -> None:
         pass
+
+    def refresh(self) -> None:
+        pass

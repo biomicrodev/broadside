@@ -76,10 +76,10 @@ class BlockEditorView(QWidget):
 
     def initBindings(self):
         self.blockDiagramEditor.blockChanged.connect(lambda: self.blockChanged.emit())
-        self.sampleTableEditorView.samplesChanged.connect(
+        self.sampleTableEditorView.sampleListChanged.connect(
             lambda: self.blockChanged.emit()
         )
-        self.sampleTableEditorView.samplesChanged.connect(
+        self.sampleTableEditorView.sampleListChanged.connect(
             lambda: self.blockDiagramEditor.refresh()
         )
 
@@ -201,3 +201,7 @@ class BlockListEditor(Editor):
         invalidBlockIndexes = self.model.state.invalid_block_indexes()
         self.view.styleInvalidTabs(invalidBlockIndexes)
         self.isValid = len(invalidBlockIndexes) == 0
+
+    def refresh(self) -> None:
+        self.view.refresh()
+        self.validate()

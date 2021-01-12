@@ -1,9 +1,24 @@
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Any
 
-from PySide2.QtCore import Qt, QDir, Signal, QRect, QSize, QModelIndex
-from PySide2.QtGui import QFontMetrics, QMouseEvent, QResizeEvent, QIcon, QPainter, QPen
+from PySide2.QtCore import (
+    Qt,
+    QDir,
+    Signal,
+    QRect,
+    QSize,
+    QModelIndex,
+    QAbstractListModel,
+)
+from PySide2.QtGui import (
+    QFontMetrics,
+    QMouseEvent,
+    QResizeEvent,
+    QIcon,
+    QPainter,
+    QPen,
+)
 from PySide2.QtWidgets import (
     QFrame,
     QLabel,
@@ -16,6 +31,7 @@ from PySide2.QtWidgets import (
     QTabWidget,
     QStyledItemDelegate,
     QStyleOptionViewItem,
+    QComboBox,
 )
 
 from .color import Color
@@ -52,19 +68,20 @@ class EditableTabBar(QTabBar):
 
         self.setTabsClosable(True)
         self.setMovable(True)
-        self.setCursor(Qt.OpenHandCursor)
+        self.setCursor(Qt.ArrowCursor)
 
     def tabLayoutChange(self):
         super().tabLayoutChange()
         self.tabLayoutChanged.emit()
 
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        super().mousePressEvent(event)
-        self.setCursor(Qt.ClosedHandCursor)
-
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        self.setCursor(Qt.OpenHandCursor)
+        self.setCursor(Qt.ArrowCursor)
         super().mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.NoButton:
+            self.setCursor(Qt.ClosedHandCursor)
+        super().mouseMoveEvent(event)
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         tabIndex = self.tabAt(event.pos())
@@ -143,24 +160,26 @@ class EditableTabWidget(QTabWidget):
                 self.addTabButton.sizeHint().width() + 10, self.buttonSize
             )
 
+        heightOffset = 4 if count > 1 else 0
+
         totalTabWidth = sum(
             [self.tabBar().tabRect(i).width() for i in range(self.count())]
         )
         visibleWidth = self.width()
         if visibleWidth > totalTabWidth + self.buttonSize + 3:
             # add button is placed after all the tabs
-            self.addTabButton.move(totalTabWidth + 1, 4)
+            self.addTabButton.move(totalTabWidth + 1, heightOffset)
 
         elif (visibleWidth <= totalTabWidth + self.buttonSize + 3) and (
             visibleWidth >= totalTabWidth
         ):
             # move add button along with right edge of visible area
-            self.addTabButton.move(visibleWidth - self.buttonSize, 4)
+            self.addTabButton.move(visibleWidth - self.buttonSize, heightOffset)
 
         elif visibleWidth < totalTabWidth:
             # move add button to the left of the scroller buttons
             self.addTabButton.move(
-                visibleWidth - self.buttonSize - self.scrollWidth + 1, 4
+                visibleWidth - self.buttonSize - self.scrollWidth + 1, heightOffset
             )
 
 
@@ -191,6 +210,53 @@ class LineEditItemDelegate(QStyledItemDelegate):
 
             painter.setPen(pen)
             painter.drawRect(QRect(x, y, w, h))
+
+
+class NamesModel(QAbstractListModel):
+    """
+    Use a proxy model here possibly? looks like the proxy model needs a base model to
+    already exist, which we don't use (actually we do, just elsewhere). maybe use that
+    here
+    """
+
+    def __init__(self, names: List[str], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.names = names
+
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
+        if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
+            return self.names[index.row()]
+
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignCenter
+
+    def rowCount(self, parent: QModelIndex = None, *args, **kwargs):
+        return len(self.names)
+
+    def updateNames(self, names: List[str]) -> None:
+        self.layoutAboutToBeChanged.emit()
+        self.names = names
+        self.layoutChanged.emit()
+
+
+class ComboBoxDelegate(QStyledItemDelegate):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model = None
+
+    def setModel(self, model: QAbstractListModel) -> None:
+        self.model = model
+
+    def createEditor(
+        self, parent: QWidget, option: QStyleOptionViewItem, index: QModelIndex
+    ) -> QWidget:
+        editor = QComboBox(parent=parent)
+
+        if self.model is not None:
+            editor.setModel(self.model)
+
+        return editor
 
 
 def showSaveDialog(

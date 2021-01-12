@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Type, Callable, Any
 
-from PySide2.QtCore import QObject, Signal, QThread, QTimer, QRunnable, Slot
+from PySide2.QtCore import QObject, Signal, QThread, QTimer
 
 
 @dataclass(frozen=True)
@@ -32,21 +32,20 @@ class Task(QObject):
         self._lastReport: Optional[Report] = None
 
         self._timer = QTimer()
-        self._timer.setInterval(16)
+        self._timer.setInterval(30)
 
-        def resolve():
+        def onTimeout():
             """
             progress: A...B...C...D...E...F...G...H...I...J
+            lastrepo: AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJ
             throttle: A.........C.........F.........H.........J
             """
 
-            # if self._stopped:
-            #     return
             if self._lastReport is not None:
                 self._progressThrottled.emit(self._lastReport)
             self._lastReport = None
 
-        self._timer.timeout.connect(resolve)
+        self._timer.timeout.connect(onTimeout)
 
         self.started.connect(self._timer.start)
         self.finished.connect(self._timer.stop)
@@ -91,7 +90,7 @@ class Runner:
     init -> start -> register
     """
 
-    def __init__(self, taskCls: Type[Task], *args, **kwargs):
+    def __init__(self, task_cls: Type[Task], *args, **kwargs):
         super().__init__()
 
         self.task: Optional[Task] = None
@@ -99,7 +98,7 @@ class Runner:
 
         self._started = False
 
-        self.taskCls = taskCls
+        self.task_cls = task_cls
         self._args = args
         self._kwargs = kwargs
 
@@ -109,7 +108,7 @@ class Runner:
 
         self.thread = QThread()
 
-        self.task = self.taskCls(*self._args, **self._kwargs)
+        self.task = self.task_cls(*self._args, **self._kwargs)
         self.task.moveToThread(self.thread)
         self.task.finished.connect(self.task.deleteLater)
         self.task.finished.connect(self.thread.quit)

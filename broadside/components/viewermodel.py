@@ -1,11 +1,10 @@
 import logging
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 
-from PySide2.QtCore import QObject, Signal, QTimer
+from PySide2.QtCore import QObject, Signal
 
 from .task import Runner
-from ..models.image import Image
 from ..models.state import State
 
 
@@ -49,7 +48,7 @@ class ViewerModel(QObject):
         self.state: Optional[State] = None
         self.executors: Dict[str, Runner] = {}
 
-        self._images_loaded = False
+        self._imagesLoaded = False
 
         # logging
         self.isStaleChanged.connect(lambda: self.log.info("isStaleChanged emitted"))
@@ -111,8 +110,14 @@ class ViewerModel(QObject):
             self.log.warning(f"{str(val)} is base folder")
             return
 
-        self._set_path(val)
+        self._setPath(val)
         self.pathChanged.emit()
+
+    def _setPath(self, val: Path) -> None:
+        filepath = val / State.filename
+        if not filepath.exists():
+            self.isStale = True
+        self.state = State(val)
 
     def save(self) -> None:
         if not self.isSet:
@@ -126,28 +131,10 @@ class ViewerModel(QObject):
         self.state.save()
         self.isStale = False
 
-    def _set_path(self, val: Path) -> None:
-        from .project.image.tasks import ReadImagesTask
-
-        self.state = State(val)
-
-        # load images
-        imagesPath = self.state.path / self.state.images_dir
-        runner = self.executors["read-images"] = Runner(ReadImagesTask, imagesPath)
-        runner.init()
-
-        def on_images_loaded(images: List[Image]):
-            self.state.images.extend(images)
-            self._images_loaded = True
-
-        runner.register(result=on_images_loaded)
-
-        QTimer.singleShot(100, lambda: runner.start())  # why do I need to do this...
-
     def close(self):
-        self.stop_runners()
+        self.stopRunners()
 
-    def stop_runners(self):
+    def stopRunners(self):
         runners = self.executors.values()
         for runner in runners:
             runner.stop()

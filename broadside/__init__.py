@@ -1,6 +1,5 @@
 import logging
 import sys
-from pathlib import Path
 
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QApplication
@@ -24,8 +23,6 @@ def run():
 
     log.info("QApp started")
 
-    Viewer(
-        app=app, theme="light", path=Path("/home/sebastian/limbo/projects/test_project")
-    )
+    Viewer(app=app, theme="light")
 
     sys.exit(app.exec_())

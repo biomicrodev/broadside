@@ -93,15 +93,26 @@ class ProjectEditor(Editor):
         updateTabStyle(self.panelListEditor)
         updateTabStyle(self.imageListEditor)
 
+        self.deviceListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+        self.blockListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+        self.panelListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+        self.imageListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+
         self.deviceListEditor.deviceListChanged.connect(lambda: self.dataChanged.emit())
         self.blockListEditor.blockListChanged.connect(lambda: self.dataChanged.emit())
         self.panelListEditor.panelListChanged.connect(lambda: self.dataChanged.emit())
         self.imageListEditor.imageListChanged.connect(lambda: self.dataChanged.emit())
 
-        self.deviceListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
-        self.blockListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
-        self.panelListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
-        self.imageListEditor.isValidChanged.connect(lambda: self.isValidChanged.emit())
+        # cross-editor reactivity
+        self.deviceListEditor.deviceListChanged.connect(
+            lambda: self.blockListEditor.refresh()
+        )
+        self.blockListEditor.blockListChanged.connect(
+            lambda: self.imageListEditor.refresh()
+        )
+        self.panelListEditor.panelListChanged.connect(
+            lambda: self.imageListEditor.refresh()
+        )
 
         self.isValidChanged.connect(lambda: self.validate())
 
@@ -127,30 +138,15 @@ class ProjectEditor(Editor):
         self.view.descriptionTextEdit.textChanged.connect(lambda: setDescriptionText())
 
     def validate(self):
-        isDeviceListEditorValid = (
-            self.deviceListEditor.isValid
-            if self.deviceListEditor is not None
-            else False
-        )
-
-        isBlockListEditorValid = (
-            self.blockListEditor.isValid if self.blockListEditor is not None else False
-        )
-
-        isPanelListEditorValid = (
-            self.panelListEditor.isValid if self.panelListEditor is not None else False
-        )
-
-        isImageListEditorValid = (
-            self.imageListEditor.isValid if self.imageListEditor is not None else False
-        )
-
-        self.isValid = (
-            isDeviceListEditorValid
-            and isBlockListEditorValid
-            and isPanelListEditorValid
-            and isImageListEditorValid
-            and self.model.isSet
-        )
+        if not self.model.isSet:
+            self.isValid = False
+        else:
+            self.model.state.validate()
+            self.isValid = (
+                self.deviceListEditor.isValid
+                and self.blockListEditor.isValid
+                and self.panelListEditor.isValid
+                and self.imageListEditor.isValid
+            )
 
         self.log.info(f"validated to {str(self.isValid)}")

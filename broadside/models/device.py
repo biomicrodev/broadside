@@ -60,7 +60,7 @@ class Device(Serializable):
         }
 
     @classmethod
-    def from_dict(cls, dct: Dict[str, Any]):
+    def from_dict(cls, dct: Dict[str, Any]) -> "Device":
         name = dct.get("name", "Unnamed")
 
         long_orient = dct.get("longitudinal_orientation", None)
@@ -87,11 +87,11 @@ class Device(Serializable):
 
     def __repr__(self) -> str:
         return (
-            f"Device("
+            "Device("
             f"name={self.name}, "
             f"longitudinal_orientation={self.longitudinal_orientation}, "
             f"longitudinal_direction={self.longitudinal_direction}, "
             f"angular_direction={self.angular_direction}, "
             f"payload={self.payload}"
-            f")"
+            ")"
         )

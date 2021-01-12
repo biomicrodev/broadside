@@ -1,4 +1,4 @@
-from broadside import run
+from . import run
 
 if __name__ == "__main__":
     run()

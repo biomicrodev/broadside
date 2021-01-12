@@ -1,6 +1,6 @@
 import logging
 
-from PySide2.QtCore import Qt, QSize
+from PySide2.QtCore import Qt
 from PySide2.QtWidgets import (
     QWidget,
     QLabel,
@@ -131,9 +131,9 @@ class ProjectView(QWidget):
         self.tabWidget = tabWidget
 
         # whenever user clicks on a tab, refresh it (devices, blocks, panels, or image)
-        tabWidget.currentChanged.connect(
-            lambda index: tabWidget.widget(index).refresh()
-        )
+        # tabWidget.currentChanged.connect(
+        #     lambda index: tabWidget.widget(index).refresh()
+        # )
 
         settingsLayout = QVBoxLayout()
         settingsLayout.addWidget(descriptionBox, stretch=0)

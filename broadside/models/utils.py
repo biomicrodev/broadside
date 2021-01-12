@@ -107,8 +107,7 @@ class Angle:
 
     @deg.setter
     def deg(self, val: float) -> None:
-        rad = math.radians(val)
-        self.rad = rad
+        self.rad = math.radians(val)
 
     @property
     def int(self) -> int:

@@ -1,24 +1,30 @@
 import logging
 from pathlib import Path
-from typing import List, Any, Optional
+from typing import List, Any, Tuple
 
-from PySide2.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
+from PySide2.QtCore import (
+    QAbstractTableModel,
+    QModelIndex,
+    Qt,
+    Signal,
+)
 from PySide2.QtWidgets import (
     QTableView,
     QAbstractItemView,
     QHeaderView,
-    QWidget,
-    QVBoxLayout,
-    QProgressBar,
-    QLabel,
     QLayout,
     QLayoutItem,
+    QWidget,
+    QVBoxLayout,
 )
+from natsort import natsort_keygen
 
-from broadside.components.editor import Editor
-from broadside.components.task import Report
-from broadside.components.viewermodel import ViewerModel
-from broadside.models.image import Image
+from ...editor import Editor
+from ...utils import ComboBoxDelegate, NamesModel
+from ...viewermodel import ViewerModel
+from ....models.block import Block
+from ....models.image import Image
+from ....models.panel import Panel
 
 
 def clearLayout(layout: QLayout) -> None:
@@ -33,8 +39,17 @@ def clearLayout(layout: QLayout) -> None:
         item = layout.takeAt(0)
 
 
+def getNames(items: List) -> List[str]:
+    def key(name: str) -> Tuple[bool, str]:
+        return name == "", name
+
+    natkey = natsort_keygen(key=key)
+    names = sorted([i.name for i in items], key=natkey)
+    return names
+
+
 class ImageTableModel(QAbstractTableModel):
-    keys = ["filepath", "block_name", "panel_name"]
+    keys = ["relpath", "block_name", "panel_name"]
     headers = ["Path", "Block", "Panel"]
 
     def __init__(self, basepath: Path, images: List[Image], *args, **kwargs):
@@ -51,20 +66,40 @@ class ImageTableModel(QAbstractTableModel):
             key = self.keys[col]
             value = getattr(self.images[row], key)
 
-            if key == "filepath":
-                value: Path
-                value = value.relative_to(self.basepath)
-
             return str(value)
 
         elif role == Qt.TextAlignmentRole:
             col = index.column()
             key = self.keys[col]
 
-            if key == "filepath":
-                return Qt.AlignLeft | Qt.AlignVCenter
+            if key == "relpath":
+                # see https://stackoverflow.com/a/35175211 for `int()`
+                return int(Qt.AlignLeft | Qt.AlignVCenter)
             else:
                 return Qt.AlignCenter
+
+    def setData(
+        self, index: QModelIndex, value: Any, role: Qt.ItemDataRole = None
+    ) -> bool:
+        if role == Qt.EditRole:
+            row = index.row()
+            col = index.column()
+
+            key = self.keys[col]
+
+            value = str(value)
+            oldValue = getattr(self.images[row], key)
+            if oldValue == value:
+                return False
+
+            setattr(self.images[row], key, value)
+            self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
+            return True
+
+        return False
+
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        return super().flags(index) | Qt.ItemIsEditable
 
     def rowCount(self, parent=None, *args, **kwargs) -> int:
         return len(self.images)
@@ -89,17 +124,64 @@ class ImageTableView(QTableView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.blockComboBoxDelegate = ComboBoxDelegate(parent=self)
+        self.setItemDelegateForColumn(1, self.blockComboBoxDelegate)
+
+        self.panelComboBoxDelegate = ComboBoxDelegate(parent=self)
+        self.setItemDelegateForColumn(2, self.panelComboBoxDelegate)
+
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setWordWrap(False)
 
         horizontalHeader: QHeaderView = self.horizontalHeader()
         horizontalHeader.setStretchLastSection(True)
-        # horizontalHeader.setSectionResizeMode(QHeaderView.Stretch)
 
 
 class ImageListEditorView(QWidget):
-    def refresh(self):
-        pass
+    imageListChanged = Signal()
+
+    def __init__(
+        self,
+        basepath: Path,
+        images: List[Image],
+        blocks: List[Block],
+        panels: List[Panel],
+        *args,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+
+        self.images = images
+        self.blocks = blocks
+        self.panels = panels
+
+        self.model = ImageTableModel(basepath, images)
+        self.view = ImageTableView()
+        self.view.setModel(self.model)
+
+        # init UI
+        layout = QVBoxLayout()
+        layout.addWidget(self.view)
+        self.setLayout(layout)
+
+        # bindings
+        self.model.dataChanged.connect(lambda _: self.imageListChanged.emit())
+
+        # initialize
+        blockNames = getNames(blocks)
+        self.blockNamesModel = NamesModel(blockNames)
+        self.view.blockComboBoxDelegate.setModel(self.blockNamesModel)
+
+        panelNames = getNames(panels)
+        self.panelNamesModel = NamesModel(panelNames)
+        self.view.panelComboBoxDelegate.setModel(self.panelNamesModel)
+
+    def refresh(self) -> None:
+        blockNames = getNames(self.blocks)
+        self.blockNamesModel.updateNames(blockNames)
+
+        panelNames = getNames(self.panels)
+        self.panelNamesModel.updateNames(panelNames)
 
 
 class ImageListEditor(Editor):
@@ -110,69 +192,28 @@ class ImageListEditor(Editor):
     def __init__(self, model: ViewerModel, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        basepath = model.path / model.state.images_dir
-        self.tableModel = ImageTableModel(basepath, model.state.images)
-        self.tableModel.dataChanged.connect(lambda _: self.imageListChanged.emit())
-        # but not layoutChanged, since the layout won't change this way
+        basepath = model.path / Image.images_dir
 
-        self._progressBar: Optional[QProgressBar] = None
-        self._progressIndicator: Optional[QLabel] = None
+        self.model = model
+        self.view = ImageListEditorView(
+            basepath,
+            images=model.state.images,
+            blocks=model.state.blocks,
+            panels=model.state.panels,
+        )
 
-        # set up view
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignCenter)
+        # set up bindings
+        self.view.imageListChanged.connect(lambda: self.imageListChanged.emit())
+        self.imageListChanged.connect(lambda: self.validate())
 
-        self.view = ImageListEditorView()
-        self.view.setLayout(layout)
-
-        # init executor bindings
-        if not model._images_loaded:
-            model.executors["read-images"].register(
-                started=self.startedLoadingImages,
-                finished=self.finishedLoadingImages,
-                progress=self.onProgress,
-            )
-        else:
-            self.loadImageTable()
-
-    def startedLoadingImages(self):
-        self._progressBar = QProgressBar()
-        self._progressBar.setOrientation(Qt.Horizontal)
-        self._progressBar.setMinimumWidth(100)
-        self._progressBar.setMaximumWidth(300)
-
-        self._progressIndicator = QLabel()
-        self._progressIndicator.setText("Loading images ...")
-
-        layout = self.view.layout()
-        clearLayout(layout)
-
-        layout.setAlignment(Qt.AlignCenter)
-        layout.addStretch(1)
-        layout.addWidget(self._progressBar)
-        layout.addWidget(self._progressIndicator)
-        layout.addStretch(1)
-
-    def onProgress(self, report: Report) -> None:
-        self._progressBar.setMinimum(0)
-        self._progressBar.setMaximum(report.total)
-        self._progressBar.setValue(report.iter)
-
-        self._progressIndicator.setText(f"Loading image {report.iter}/{report.total}")
-
-    def finishedLoadingImages(self):
-        self.log.info("Finished loading images")
-        self.loadImageTable()
+        self.validate()
 
     def validate(self) -> None:
-        self.isValid = True  # TODO: replace with actual image list validation logic
+        """
+        Nothing to validate, since we allow images with empty blocks and panels
+        """
+        self.isValid = True
 
-    def loadImageTable(self):
-        layout: QLayout = self.view.layout()
-        clearLayout(layout)
-
-        tableView = ImageTableView()
-        tableView.setModel(self.tableModel)
-        layout.addWidget(tableView, 1)
-
+    def refresh(self) -> None:
+        self.view.refresh()
         self.validate()

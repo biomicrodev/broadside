@@ -29,8 +29,7 @@ def get_levels(block: Block, devices: List[Device]) -> List[str]:
         if d.name in device_names:
             payloads.extend(d.payload)
     levels = [p.level for p in payloads]
-    levels = list(set(levels))
-    levels = natsorted(levels)
+    levels = natsorted(list(set(levels)))
     return levels
 
 
@@ -219,7 +218,8 @@ class BlockDiagramEditorView(QGroupBox):
 
             # set indicator appearance
             deviceName = sample.device_name
-            if deviceName == NO_DEVICE:
+            device = next((d for d in self.devices if d.name == deviceName), None)
+            if (deviceName == NO_DEVICE) or (device is None):
                 indicator.fiducialItem.hide()
                 indicator.setText(sample.name + "\n" + NO_DEVICE)
                 indicator.angle = 0
@@ -227,8 +227,6 @@ class BlockDiagramEditorView(QGroupBox):
                 indicator.setPos(vector.pos.x, vector.pos.y)
 
             else:
-                device = next(d for d in self.devices if d.name == deviceName)
-
                 angledLabels: List[AngledLabel] = [
                     (f.name, f.angle)
                     for f in device.payload
@@ -258,12 +256,12 @@ class BlockDiagramEditorView(QGroupBox):
             indicator = self.indicators[i]
 
             deviceName = sample.device_name
-            if deviceName == NO_DEVICE:
+            device = next((d for d in self.devices if d.name == deviceName), None)
+            if (deviceName == NO_DEVICE) or (device is None):
                 indicator.fiducialItem.hide()
                 indicator.setAngledLabels([])
 
             else:
-                device = next(d for d in self.devices if d.name == deviceName)
                 angledLabels: List[AngledLabel] = [
                     (f.name, f.angle) for f in device.payload if f.level == level
                 ]

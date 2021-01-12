@@ -8,7 +8,6 @@ from PySide2.QtCore import (
     QModelIndex,
     Qt,
     QItemSelectionModel,
-    QAbstractListModel,
     QRect,
     QAbstractItemModel,
 )
@@ -19,25 +18,36 @@ from PySide2.QtWidgets import (
     QPushButton,
     QHBoxLayout,
     QVBoxLayout,
-    QStyledItemDelegate,
-    QStyleOptionViewItem,
-    QComboBox,
     QHeaderView,
     QLineEdit,
 )
 from natsort import natsort_keygen
 
-from ...utils import CellState, LineEditItemDelegate
+from ...utils import CellState, LineEditItemDelegate, NamesModel, ComboBoxDelegate
 from ....models.block import Sample, Block
 from ....models.device import Device, NO_DEVICE
 
 
 def getCohorts(samples: List[Sample]) -> List[str]:
+    def key(name: str) -> Tuple[bool, str]:
+        return name == "", name
+
+    natkey = natsort_keygen(key=key)
+
     cohorts = []
     for sample in samples:
         cohorts.extend(sample.cohorts.keys())
-    cohorts = sorted(list(set(cohorts)))
+    cohorts = sorted(list(set(cohorts)), key=natkey)
     return cohorts
+
+
+def getDeviceNames(devices: List[Device]) -> List[str]:
+    def key(name: str) -> Tuple[bool, str]:
+        return name == "", name
+
+    natkey = natsort_keygen(key=key)
+    names = [NO_DEVICE] + sorted([d.name for d in devices], key=natkey)
+    return names
 
 
 class SampleTableModel(QAbstractTableModel):
@@ -62,12 +72,12 @@ class SampleTableModel(QAbstractTableModel):
 
     def setItem(self, index: QModelIndex, value: Any) -> bool:
         row = index.row()
-        column = index.column()
+        col = index.column()
 
         # if key is either sample name or device name
-        if column < len(Sample.keys):
-            key = Sample.keys[column]
-            type_ = Sample.types[column]
+        if col < len(Sample.keys):
+            key = Sample.keys[col]
+            type_ = Sample.types[col]
 
             value = type_(value)
             oldValue = getattr(self.samples[row], key)
@@ -81,7 +91,7 @@ class SampleTableModel(QAbstractTableModel):
         # if key is in cohorts
         else:
             cohorts = getCohorts(self.samples)
-            key = cohorts[column - len(Sample.keys)]
+            key = cohorts[col - len(Sample.keys)]
 
             value = str(value)
             oldValue = self.samples[row].cohorts.get(key, "")
@@ -112,16 +122,10 @@ class SampleTableModel(QAbstractTableModel):
                     return CellState.Valid
 
             elif key == "device_name":
-                deviceName = value
-                if deviceName in [d.name for d in self.devices]:
+                if value != "":
                     return CellState.Valid
                 else:
                     return CellState.Invalid
-
-            if (key == "sample") and ((value == "") or (value is None)):
-                return CellState.Invalid
-            else:
-                return CellState.Valid
 
         elif role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
@@ -297,62 +301,6 @@ class SampleTableHeaderView(QHeaderView):
         view.setCurrentIndex(index)
 
 
-class DeviceNamesModel(QAbstractListModel):
-    """
-    Use a proxy model here possibly? looks like the proxy model needs a base model to
-    already exist, which we don't use (actually we do, just elsewhere). maybe use that
-    here
-    """
-
-    def __init__(self, deviceNames: List[str], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.names = deviceNames
-        self.names.insert(0, NO_DEVICE)
-
-    def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
-        if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
-            return self.names[index.row()]
-
-        elif role == Qt.TextAlignmentRole:
-            return Qt.AlignCenter
-
-    def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
-        return len(self.names)
-
-    def updateNames(self, deviceNames: List[str]) -> None:
-        self.layoutAboutToBeChanged.emit()
-
-        # self.names.clear()
-        self.names = [NO_DEVICE] + deviceNames
-
-        self.layoutChanged.emit()
-
-
-class DeviceComboBoxDelegate(QStyledItemDelegate):
-    """
-    Annoying things to fix here:
-    1. When editing the QComboBox delegate's selection, it's not centered
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.model = None
-
-    def setModel(self, model: QAbstractListModel) -> None:
-        self.model = model
-
-    def createEditor(
-        self, parent: QWidget, option: QStyleOptionViewItem, index: QModelIndex
-    ) -> QWidget:
-        editor = QComboBox(parent=parent)
-
-        if self.model is not None:
-            editor.setModel(self.model)
-
-        return editor
-
-
 class SampleTableView(QTableView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -362,9 +310,8 @@ class SampleTableView(QTableView):
         lineEditDelegate = LineEditItemDelegate(parent=self)
         self.setItemDelegateForColumn(0, lineEditDelegate)
 
-        deviceComboBoxDelegate = DeviceComboBoxDelegate(parent=self)
-        self.deviceComboBoxDelegate = deviceComboBoxDelegate
-        self.setItemDelegateForColumn(1, deviceComboBoxDelegate)
+        self.deviceComboBoxDelegate = ComboBoxDelegate(parent=self)
+        self.setItemDelegateForColumn(1, self.deviceComboBoxDelegate)
 
         horizontalHeader = SampleTableHeaderView(Qt.Horizontal, self)
         self.setHorizontalHeader(horizontalHeader)
@@ -393,7 +340,7 @@ class SampleTableView(QTableView):
 class SampleTableEditorView(QWidget):
     log = logging.getLogger(__name__)
 
-    samplesChanged = Signal()
+    sampleListChanged = Signal()
 
     def __init__(self, block: Block, devices: List[Device], *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -404,11 +351,11 @@ class SampleTableEditorView(QWidget):
         self.view = SampleTableView()
         self.view.setModel(self.model)
 
-        self.model.dataChanged.connect(lambda _: self.samplesChanged.emit())
-        self.model.layoutChanged.connect(lambda: self.samplesChanged.emit())
+        self.model.dataChanged.connect(lambda _: self.sampleListChanged.emit())
+        self.model.layoutChanged.connect(lambda: self.sampleListChanged.emit())
 
-        deviceNames = [d.name for d in devices]
-        self.deviceNamesModel = DeviceNamesModel(deviceNames)
+        deviceNames = getDeviceNames(devices)
+        self.deviceNamesModel = NamesModel(deviceNames)
         self.view.deviceComboBoxDelegate.setModel(self.deviceNamesModel)
 
         self.initUI()
@@ -462,6 +409,15 @@ class SampleTableEditorView(QWidget):
         self.setLayout(layout)
 
     def initBindings(self):
+        # delegates
+        def updateLineEditItemDelegates():
+            nColumns = self.model.columnCount()
+            for i in range(len(Sample.keys), nColumns):
+                lineEditDelegate = LineEditItemDelegate(parent=self.view)
+                self.view.setItemDelegateForColumn(i, lineEditDelegate)
+
+        updateLineEditItemDelegates()
+
         def addSample():
             self.model.addSample()
             self.view.sampleAdded()
@@ -480,18 +436,11 @@ class SampleTableEditorView(QWidget):
 
         self.sortSamplesButton.clicked.connect(lambda: self.model.sortSamples())
 
-        def updateLineEditItemDelegates():
-            nColumns = self.model.columnCount()
-            for i in range(len(Sample.keys), nColumns):
-                lineEditDelegate = LineEditItemDelegate(parent=self.view)
-                self.view.setItemDelegateForColumn(i, lineEditDelegate)
-
         def addCohort():
             self.model.addCohort()
             updateLineEditItemDelegates()
 
         self.addCohortButton.clicked.connect(lambda: addCohort())
-        updateLineEditItemDelegates()
 
         def deleteCohort():
             # after deleting row, need to re-set index
@@ -528,6 +477,6 @@ class SampleTableEditorView(QWidget):
             self.deleteCohortButton.setCursor(Qt.ForbiddenCursor)
 
     def refresh(self) -> None:
-        deviceNames = [d.name for d in self.devices]
+        deviceNames = getDeviceNames(self.devices)
         self.deviceNamesModel.updateNames(deviceNames)
         self.deviceNamesModel.layoutChanged.emit()

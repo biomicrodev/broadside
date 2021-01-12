@@ -2,7 +2,7 @@ import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Any, Set, NamedTuple, Optional
+from typing import Dict, List, Any, Set, Optional
 
 import dask.array as da
 import numpy as np
@@ -12,6 +12,7 @@ from tifffile import TiffFile, TiffPageSeries, TiffPage
 from tifffile.tifffile import ZarrTiffStore
 from zarr import Group
 
+from .serializable import Serializable
 from .utils import PointF
 
 NS_SCN = "{http://www.leica-microsystems.com/scn/2010/10/01}"
@@ -28,23 +29,22 @@ class ObjectGroup:
     polygons: List[Polygon]
 
 
-class Pyramid(NamedTuple):
+@dataclass(frozen=True)
+class Pyramid:
     """
     A Pyramid is a set of arrays that form a geometric sequence in image space.
     The microns per pixel value is the scale factor for the base array.
     The offset is in physical units.
-
-    NamedTuple was picked as the class in order to enforce immutability, as the contents
-    reflect proprietary file formats and cannot be changed.
     """
 
     layers: List[da.Array]
     mpp: PointF
     offset: PointF
-    object_groups: List[ObjectGroup] = []
+    object_groups: List[ObjectGroup] = field(default_factory=list)
 
 
-class PyramidGroup(NamedTuple):
+@dataclass(frozen=True)
+class PyramidGroup:
     dtype: np.dtype
     channel_index: int
     n_channels: int
@@ -62,20 +62,52 @@ class Annotation:
     name: str
     polygon: Polygon = None
 
+    annotations_dir = "annotations"
+
 
 @dataclass
-class Image:
+class Image(Serializable):
     """
     An Image is a list of Pyramids, with an optional background Pyramid.
     The background Pyramid appears in microscopes that obtain a low-resolution image of
     the entire slide, often during a tissue detection step.
     """
 
-    filepath: Path
-    pixels: PyramidGroup
+    relpath: Path
     block_name: str = ""
     panel_name: str = ""
+    pixels: Optional[PyramidGroup] = None
     annotations: List[Annotation] = field(default_factory=list)
+
+    images_dir = "images"
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "relpath": str(self.relpath),
+            "block_name": self.block_name,
+            "panel_name": self.panel_name,
+        }
+
+    @classmethod
+    def from_dict(cls, dct: Dict[str, Any]) -> "Image":
+        relpath = dct.get("relpath", None)
+        if relpath is None:
+            raise RuntimeError("No relpath found")
+        relpath = Path(relpath)
+
+        block_name = dct.get("block_name", "")
+        panel_name = dct.get("panel_name", "")
+        return cls(relpath=relpath, block_name=block_name, panel_name=panel_name)
+
+    def rename(self) -> None:
+        pass
+
+    def exists(self, basepath: Path) -> bool:
+        return (basepath / Image.images_dir / self.relpath).exists()
+
+    def load(self, basepath: Path) -> None:
+        self.pixels = normalize(basepath / self.relpath)
+        self.annotations = []  # TODO: load annotations here
 
 
 def parse_svs_metadata(s: str):
@@ -190,7 +222,7 @@ def get_scn_pyramids(
     return pyramids
 
 
-def normalize(path: Path) -> Optional[Image]:
+def normalize(path: Path) -> Optional[PyramidGroup]:
     with TiffFile(str(path)) as file:
         flags: Set[str] = file.flags
         series: List[TiffPageSeries] = file.series
@@ -218,7 +250,7 @@ def normalize(path: Path) -> Optional[Image]:
         axes: str = image.axes
         channel_index: int = list(axes).index("S")
 
-        pixels = PyramidGroup(
+        return PyramidGroup(
             dtype=image.dtype,
             channel_index=channel_index,
             n_channels=image.shape[channel_index],
@@ -228,7 +260,6 @@ def normalize(path: Path) -> Optional[Image]:
             label=label,
             pyramids=pyramids,
         )
-        return Image(filepath=path, pixels=pixels)
 
     elif "scn" in flags:
         # get metadata
@@ -255,7 +286,7 @@ def normalize(path: Path) -> Optional[Image]:
             n_channels = series[0].shape[channel_index]
             pyramids = get_scn_pyramids(path, metadata, series)
 
-            pixels = PyramidGroup(
+            return PyramidGroup(
                 dtype=series[0].dtype,
                 channel_index=channel_index,
                 n_channels=n_channels,
@@ -265,7 +296,6 @@ def normalize(path: Path) -> Optional[Image]:
                 label=label,
                 pyramids=pyramids,
             )
-            return Image(filepath=path, pixels=pixels)
 
         else:
             # is brightfield image (until we start using other modalities)
@@ -274,7 +304,7 @@ def normalize(path: Path) -> Optional[Image]:
             n_channels = series[0].shape[channel_index]
             pyramids = get_scn_pyramids(path, metadata, series)
 
-            pixels = PyramidGroup(
+            return PyramidGroup(
                 dtype=series[0].dtype,
                 channel_index=channel_index,
                 n_channels=n_channels,
@@ -285,4 +315,30 @@ def normalize(path: Path) -> Optional[Image]:
                 pyramids=pyramids[1:],  # first pyramid is background pyramid
                 background=pyramids[0],  # background pyramid
             )
-            return Image(filepath=path, pixels=pixels)
+
+
+def get_pr_image_relpaths(basepath: Path, ext=(".svs", ".scn")) -> List[Path]:
+    images_dirpath = basepath / Image.images_dir
+
+    filepaths: List[Path] = []
+    for root, dirs, files in os.walk(images_dirpath):
+        root = Path(root)
+        for file in files:
+            if file.endswith(ext):
+                filepaths.append(root / file)
+
+    relpaths: List[Path] = [
+        filepath.relative_to(images_dirpath) for filepath in filepaths
+    ]
+    filenames: List[str] = [rp.name for rp in relpaths]
+    filenames_as_set: Set[str] = set(filenames)
+
+    duplicates: List[str] = []
+    for filename in filenames_as_set:
+        if filenames.count(filename) > 1:
+            duplicates.append(filename)
+
+    if len(duplicates) > 0:
+        raise RuntimeError(f'Duplicates found! {"; ".join(duplicates)}"')
+
+    return relpaths
