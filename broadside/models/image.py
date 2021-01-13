@@ -1,3 +1,4 @@
+import logging
 import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
@@ -20,6 +21,12 @@ NS_SCN = "{http://www.leica-microsystems.com/scn/2010/10/01}"
 
 def str2int(s: str) -> int:
     return int(round(float(s)))
+
+
+def is_dir_empty(path: Path) -> bool:
+    if not path.is_dir():
+        raise ValueError(f"Path not a directory!")
+    return not any([True for _ in os.scandir(path)])
 
 
 @dataclass
@@ -80,6 +87,7 @@ class Image(Serializable):
     annotations: List[Annotation] = field(default_factory=list)
 
     images_dir = "images"
+    log = logging.getLogger(__name__)
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -99,14 +107,36 @@ class Image(Serializable):
         panel_name = dct.get("panel_name", "")
         return cls(relpath=relpath, block_name=block_name, panel_name=panel_name)
 
-    def rename(self) -> None:
-        pass
+    def move(self, basepath: Path, dst_relpath: Path) -> None:
+        im_src = basepath / Image.images_dir / self.relpath
+        im_dst = basepath / Image.images_dir / dst_relpath
+
+        im_dst.parent.mkdir(parents=True, exist_ok=True)
+        im_src.rename(im_dst)
+        # if is_dir_empty(im_src.parent):
+        #     im_src.parent.rmdir()
+
+        self.relpath = dst_relpath
+
+        # TODO: add annotation rename support
+
+    # def delete(self, basepath: Path) -> None:
+    #     image = basepath / Image.images_dir / self.relpath
+    #     image.unlink(missing_ok=True)
+    #
+    # #     TODO: add annotation delete support
 
     def exists(self, basepath: Path) -> bool:
         return (basepath / Image.images_dir / self.relpath).exists()
 
     def load(self, basepath: Path) -> None:
-        self.pixels = normalize(basepath / self.relpath)
+        if self.pixels is None:
+            self.pixels = normalize(basepath / Image.images_dir / self.relpath)
+        else:
+            self.log.info(f"{self.relpath}: Pixels already loaded")
+
+        annotations_dir = basepath / Annotation.annotations_dir / self.relpath.parent
+        annotations_dir.mkdir(parents=True, exist_ok=True)
         self.annotations = []  # TODO: load annotations here
 
 

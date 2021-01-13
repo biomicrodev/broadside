@@ -13,6 +13,7 @@ from PySide2.QtWidgets import (
     QLabel,
     QHBoxLayout,
     QVBoxLayout,
+    QLayoutItem,
 )
 
 from .utils import QHLine
@@ -146,8 +147,9 @@ class MainWindow(QMainWindow):
 
     def setEditorView(self, widget: QWidget) -> None:
         # delete old widget ...
-        oldWidget: QWidget = self.editorViewContainer.itemAt(0).widget()
-        oldWidget.deleteLater()
+        item: QLayoutItem = self.editorViewContainer.takeAt(0)
+        if item.widget() is not None:
+            item.widget().deleteLater()
 
         # ... and set new widget
         self.editorViewContainer.addWidget(widget)

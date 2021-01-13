@@ -130,21 +130,15 @@ class ProjectView(QWidget):
         tabWidget.addTab(imageListView, "Images")
         self.tabWidget = tabWidget
 
-        # whenever user clicks on a tab, refresh it (devices, blocks, panels, or image)
-        # tabWidget.currentChanged.connect(
-        #     lambda index: tabWidget.widget(index).refresh()
-        # )
-
         settingsLayout = QVBoxLayout()
         settingsLayout.addWidget(descriptionBox, stretch=0)
         settingsLayout.addWidget(tabWidget, stretch=1)
 
         # replace noProjectSelected label with the settings layout
         layout: QHBoxLayout = self.layout()
-        item: QLayoutItem = layout.itemAt(2)  # after statusWidget and spacer
+        item: QLayoutItem = layout.takeAt(2)  # after statusWidget and spacer
         if item.widget() is not None:
             item.widget().deleteLater()
-        layout.removeItem(item)
         layout.addLayout(settingsLayout, stretch=1)
 
     def setProjectLabels(self, *, path: str, name: str) -> None:

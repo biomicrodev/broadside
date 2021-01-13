@@ -13,5 +13,4 @@ class AnnotationEditor(Editor):
     def __init__(self, model: ViewerModel, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.model = model
-        self.view = AnnotationView()
+        self.view = AnnotationView(model)

@@ -7,6 +7,7 @@ from PySide2.QtCore import (
     QModelIndex,
     Qt,
     Signal,
+    QAbstractItemModel,
 )
 from PySide2.QtWidgets import (
     QTableView,
@@ -16,6 +17,10 @@ from PySide2.QtWidgets import (
     QLayoutItem,
     QWidget,
     QVBoxLayout,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QFileDialog,
+    QDialog,
 )
 from natsort import natsort_keygen
 
@@ -35,7 +40,6 @@ def clearLayout(layout: QLayout) -> None:
         elif item.layout() is not None:
             item.layout().deleteLater()
 
-        layout.removeItem(item)
         item = layout.takeAt(0)
 
 
@@ -49,8 +53,13 @@ def getNames(items: List) -> List[str]:
 
 
 class ImageTableModel(QAbstractTableModel):
+    """
+    TODO: be able to sort image table
+    """
+
     keys = ["relpath", "block_name", "panel_name"]
     headers = ["Path", "Block", "Panel"]
+    types = [Path, str, str]
 
     def __init__(self, basepath: Path, images: List[Image], *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -86,25 +95,41 @@ class ImageTableModel(QAbstractTableModel):
             col = index.column()
 
             key = self.keys[col]
+            type_ = self.types[col]
 
-            value = str(value)
+            value = type_(value)
             oldValue = getattr(self.images[row], key)
             if oldValue == value:
                 return False
 
-            setattr(self.images[row], key, value)
-            self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
-            return True
+            if key == "relpath":
+                dstAbspath = value
+                dstRelpath = dstAbspath.relative_to(self.basepath / Image.images_dir)
+
+                # remove duplicates
+                for image in self.images:
+                    if dstRelpath == image.relpath:
+                        return False
+
+                # move image
+                self.images[row].move(self.basepath, dstRelpath)
+                self.dataChanged.emit(index, index, Qt.EditRole)
+                return True
+
+            else:
+                setattr(self.images[row], key, value)
+                self.dataChanged.emit(index, index, Qt.EditRole)
+                return True
 
         return False
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         return super().flags(index) | Qt.ItemIsEditable
 
-    def rowCount(self, parent=None, *args, **kwargs) -> int:
+    def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
         return len(self.images)
 
-    def columnCount(self, parent=None, *args, **kwargs) -> int:
+    def columnCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
         return len(self.keys)
 
     def headerData(
@@ -120,9 +145,48 @@ class ImageTableModel(QAbstractTableModel):
                 return section + 1
 
 
+class FileRenameDelegate(QStyledItemDelegate):
+    def createEditor(
+        self, parent: QWidget, option: QStyleOptionViewItem, index: QModelIndex
+    ) -> QWidget:
+        view: ImageTableView = option.widget
+        model: ImageTableModel = view.model()
+        path: str = model.data(index, Qt.EditRole)
+        path = Path(path)
+        abspath = model.basepath / Image.images_dir / path
+
+        dialog = QFileDialog(parent.window(), Qt.Dialog)
+        dialog.setWindowModality(Qt.ApplicationModal)
+        dialog.setMinimumWidth(800)
+        dialog.setMinimumHeight(600)
+        dialog.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Dialog)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setViewMode(QFileDialog.Detail)
+        dialog.setDirectory(str(abspath.parent))
+        dialog.selectFile(str(abspath.name))
+        dialog.setLabelText(QFileDialog.LookIn, "Rename image file")
+
+        return dialog
+
+    def setModelData(
+        self, editor: QWidget, model: QAbstractItemModel, index: QModelIndex
+    ) -> None:
+        editor: QFileDialog
+        result: int = editor.result()
+        if result == QDialog.Accepted:
+            # if accepted, this means that the user also wanted to overwrite the file
+            dstPath: str = editor.selectedFiles()[0]
+            dstPath: Path = Path(dstPath)
+
+            model.setData(index, dstPath, Qt.EditRole)
+
+
 class ImageTableView(QTableView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.fileRenameDelegate = FileRenameDelegate(parent=self)
+        self.setItemDelegateForColumn(0, self.fileRenameDelegate)
 
         self.blockComboBoxDelegate = ComboBoxDelegate(parent=self)
         self.setItemDelegateForColumn(1, self.blockComboBoxDelegate)
@@ -158,6 +222,7 @@ class ImageListEditorView(QWidget):
         self.model = ImageTableModel(basepath, images)
         self.view = ImageTableView()
         self.view.setModel(self.model)
+        self.view.setColumnWidth(0, 300)
 
         # init UI
         layout = QVBoxLayout()
@@ -192,7 +257,7 @@ class ImageListEditor(Editor):
     def __init__(self, model: ViewerModel, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        basepath = model.path / Image.images_dir
+        basepath = model.path
 
         self.model = model
         self.view = ImageListEditorView(

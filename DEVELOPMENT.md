@@ -1,3 +1,17 @@
+# Commands
+
+| Action                        | Command                                             |
+| ----------------------------- | --------------------------------------------------- |
+| update conda                  | `conda update --name base --channel defaults conda` |
+| init conda env                | `conda env create [--file=environment.yml]`         |
+| update conda env              | `bin/conda-update.sh`                               |
+| activate/deactivate conda env | `conda activate broadside; ...; conda deactivate`   |
+| package into executable       | `bin/build.sh`                                      |
+| test                          | `pytest`                                            |
+
+# Bugs
+- PySide2 5.13: importing pyside2 causes docstrings to be None; a consequence of this is that napari's Viewer class documentation fails to be read, and throws an error. For now, we remove calls to `Viewer.__doc__` in `view_layers.py`.
+
 # Choice of framework
 User interface frameworks include `qt`, `wxwidgets`, `Tcl/Tk`, and web-based technologies. Our choice of framework is constrained by [napari](https://github.com/napari/napari), which serves as the renderer for tiled pyramidal images. Napari uses python ports of qt as its user interface. The two major ports are `PySide2` and `PyQt5`; the most significant difference is in their licensing. Because of slight differences in import statements, `qtpy` is a thin abstraction layer that offers consistent import statement styles and allows picking one port over the other.
 
@@ -5,7 +19,7 @@ User interface frameworks include `qt`, `wxwidgets`, `Tcl/Tk`, and web-based tec
 We keep our run, build, and update commands minimal by using only shell or batch files.
 
 # Dependency management
-Because of the many dependencies that we foresee as part of this project, we must segregate the python environment from system python.
+Because of the many dependencies that we require as part of this project, we must segregate the python environment from system python.
 
 To manage our dependencies, we have several options:
 
@@ -113,30 +127,14 @@ As with most GUI applications, the following systems are required:
 - an event system for reacting appropriately to user actions
 - a hierarchical model-view-whatever system of widgets responding to and triggering events
 
-Although using Qt's signals and slots system is slightly awkward (having to place them 
-as class attributes), the application is small enough that we can utilize them without
-any issues. If the application were to grow larger, then a custom event system would be
-useful.
+Although using Qt's signals and slots system is slightly awkward (having to place them as class attributes), the application is small enough that we can utilize them without any issues. If the application were to grow larger, then a custom event system would be useful.
 
 # Paradigms
-Personally, I've found it difficult to try to refactor methods that form the backend 
-of a user interface out into something else, like a set of static methods. This is 
-especially true even for the backend-heavy `ProjectModel` class. It's certainly 
-possible, but doing so only shuffles the complexity around instead of making it more 
-manageable.
+Personally, I've found it difficult to try to refactor methods that form the backend of a user interface out into something else, like a set of static methods. This is especially true even for the backend-heavy `ProjectModel` class. It's certainly possible, but doing so only shuffles the complexity around instead of making it more manageable.
 
-If it does get that complex though, one idea would be to have a `ProjectState` class 
-that completely defines the state, a `Mutations` class of static methods with state 
-mutations, and a `QObject` subclass that handles signals from the model to the view.
-That would certainly make things a bit cleaner.
-
-I regret using `dataChanged`. Use a different signal/slot system in the future.
+If it does get that complex though, one idea would be to have a `ProjectState` class that completely defines the state, a `Mutations` class of static methods with state mutations, and a `QObject` subclass that handles signals from the model to the view. That would certainly make things a bit cleaner.
 
 # Model-View Structure
-The layout of views and associated models should be structured like a tree, and events
-should propagate along its branches. If two nodes that aren't direct descendants pass
-events to each other, that may quickly get difficult to manage.
+The layout of views and associated models should be structured like a tree, and events should propagate along its branches. If two nodes that aren't direct descendants pass events to each other, that may quickly get difficult to manage.
 
-Because the application is not so big, we can get away with structuring reactivity as
-follows: load the session state from record state, populate the screen state using the
-session state, and all subsequent changes flow from screen to session.
+Because the application is not so big, we can get away with structuring reactivity as follows: load the session state from record state, populate the screen state using the session state, and all subsequent changes flow from screen to session.

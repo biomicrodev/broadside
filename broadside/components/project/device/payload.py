@@ -82,7 +82,7 @@ class FormulationTableModel(QAbstractTableModel):
                 return False
 
             setattr(self.formulations[row], key, value)
-            self.dataChanged.emit(QModelIndex(), QModelIndex(), Qt.EditRole)
+            self.dataChanged.emit(index, index, Qt.EditRole)
             return True
 
         return False

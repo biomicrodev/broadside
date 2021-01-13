@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Type, List
 
+from PySide2.QtCore import Qt
 from PySide2.QtGui import QCloseEvent
 from PySide2.QtWidgets import QApplication, QMessageBox
 
@@ -10,7 +11,7 @@ from .components.annotation import AnnotationEditor
 from .components.editor import Editor
 from .components.mainwindow import MainWindow
 from .components.navigation import Navigator
-from .components.project import ProjectEditor, ImageListEditor
+from .components.project import ProjectEditor
 from .components.utils import showSaveDialog, showSelectProjectDialog
 from .components.viewermodel import ViewerModel
 
@@ -61,18 +62,22 @@ class Viewer:
         self.update_window()
         self.update_editor()
 
-    def update_window(self) -> None:
-        self.log.info("Update window requested")
-
+    def update_window(self, filename: str = "") -> None:
         if self.model.isSet:
             # update title
             name = self.model.name
             isStale = self.model.isStale
 
             title = (
-                "Broadside" + (f" – {name}" if name else "") + ("*" if isStale else "")
+                "Broadside"
+                + (f" – {name}" if name else "")
+                + ("*" if isStale else "")
+                + (f" – {filename}" if filename else "")
             )
-            self.view.setWindowTitle(title)
+        else:
+            title = "Broadside"
+
+        self.view.setWindowTitle(title)
 
         # update menu
         self.view.saveAction.setEnabled(self.model.isSet)
@@ -98,6 +103,29 @@ class Viewer:
             self.current_editor.pathChangeRequested.connect(
                 lambda: self.on_path_change_requested()
             )
+
+        elif isinstance(self.current_editor, AnnotationEditor):
+            self.current_editor: AnnotationEditor
+            # self.current_editor.view.activeImageChanged.connect(
+            #     lambda filename: self.update_window(filename=filename)
+            # )
+
+            # TODO: refactor this logic! figure out where else this is used
+            def onIsBusyChange():
+                isBusy: bool = self.current_editor.view.isBusy
+                if isBusy:
+                    if QApplication.overrideCursor() != Qt.WaitCursor:
+                        QApplication.setOverrideCursor(Qt.WaitCursor)
+                    self.view.setEnabled(False)
+                else:
+                    self.view.setEnabled(True)
+                    if QApplication.overrideCursor() == Qt.WaitCursor:
+                        QApplication.restoreOverrideCursor()
+
+                self.log.info(f"isBusy changed to {isBusy}")
+
+            self.current_editor.view.isBusyChanged.connect(onIsBusyChange)
+            onIsBusyChange()
 
         # if data has changed in editor, let viewer know
         def set_stale():

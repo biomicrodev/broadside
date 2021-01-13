@@ -243,6 +243,7 @@ class NamesModel(QAbstractListModel):
 class ComboBoxDelegate(QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.model = None
 
     def setModel(self, model: QAbstractListModel) -> None:
