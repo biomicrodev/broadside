@@ -73,6 +73,56 @@ class Annotation:
 
 
 @dataclass
+class Color(Serializable):
+    # [0..1]?)
+    r: float
+    g: float
+    b: float
+    a: float = 1.0
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {"r": self.r, "g": self.g, "b": self.b, "a": self.a}
+
+    @classmethod
+    def from_dict(cls, dct: Dict[str, Any]) -> "Color":
+        r = dct.get("r", 1.0)
+        g = dct.get("g", 1.0)
+        b = dct.get("b", 1.0)
+        a = dct.get("a", 1.0)
+        return cls(r=r, g=g, b=b, a=a)
+
+
+@dataclass
+class Range(Serializable):
+    min: float = None
+    max: float = None
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {"min": self.min, "max": self.max}
+
+    @classmethod
+    def from_dict(cls, dct: Dict[str, Any]) -> "Range":
+        min_ = dct.get("min", None)
+        max_ = dct.get("max", None)
+        return cls(min=min_, max=max_)
+
+
+@dataclass
+class ChannelData(Serializable):
+    range: Range
+    color: Color
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {"range": self.range.as_dict(), "color": self.color.as_dict()}
+
+    @classmethod
+    def from_dict(cls, dct: Dict[str, Any]) -> "ChannelData":
+        range_ = dct.get("range", Range.from_dict({}))
+        color = dct.get("color", Color.from_dict({}))
+        return cls(range=range_, color=color)
+
+
+@dataclass
 class Image(Serializable):
     """
     An Image is a list of Pyramids, with an optional background Pyramid.
@@ -85,6 +135,7 @@ class Image(Serializable):
     panel_name: str = ""
     pixels: Optional[PyramidGroup] = None
     annotations: List[Annotation] = field(default_factory=list)
+    channels_data: List[ChannelData] = field(default_factory=list)
 
     images_dir = "images"
     log = logging.getLogger(__name__)
@@ -105,7 +156,14 @@ class Image(Serializable):
 
         block_name = dct.get("block_name", "")
         panel_name = dct.get("panel_name", "")
-        return cls(relpath=relpath, block_name=block_name, panel_name=panel_name)
+
+        channels_data = dct.get("channels_data", [])
+        return cls(
+            relpath=relpath,
+            block_name=block_name,
+            panel_name=panel_name,
+            channels_data=channels_data,
+        )
 
     def move(self, basepath: Path, dst_relpath: Path) -> None:
         im_src = basepath / Image.images_dir / self.relpath
@@ -131,7 +189,9 @@ class Image(Serializable):
 
     def load(self, basepath: Path) -> None:
         if self.pixels is None:
+            self.log.info(f"Loading {self.relpath}")
             self.pixels = normalize(basepath / Image.images_dir / self.relpath)
+            self.log.info(f"Load {self.relpath} complete")
         else:
             self.log.info(f"{self.relpath}: Pixels already loaded")
 

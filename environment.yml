@@ -5,7 +5,7 @@ channels:
 dependencies:
   - black>=20.7
   - dask>=2.30
-  - napari>=0.4
+#  - napari>=0.4
   - natsort>=7.1
   - numpy>=1.19
   - pyinstaller>=4.0

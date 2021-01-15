@@ -17,14 +17,6 @@ from PySide2.QtWidgets import (
 from ..utils import QElidedLabel
 
 
-def createNoProjectSelectedLabel() -> QLabel:
-    label = QLabel()
-    label.setObjectName("noProjectSelectedLabel")
-    label.setText("No project selected")
-    label.setAlignment(Qt.AlignCenter)
-    return label
-
-
 class ProjectView(QWidget):
     log = logging.getLogger(__name__)
 
@@ -32,13 +24,17 @@ class ProjectView(QWidget):
         super().__init__(*args, **kwargs)
 
         statusWidget = self.initStatusWidget()
-        noProjectSelectedLabel = createNoProjectSelectedLabel()
+
+        noProjectSetLabel = QLabel()
+        noProjectSetLabel.setObjectName("noProjectSetLabel")
+        noProjectSetLabel.setText("No project set")
+        noProjectSetLabel.setAlignment(Qt.AlignCenter)
 
         layout = QHBoxLayout()
         layout.setContentsMargins(6, 6, 6, 6)
         layout.addWidget(statusWidget, stretch=0)
         layout.addSpacing(3)
-        layout.addWidget(noProjectSelectedLabel, stretch=1)
+        layout.addWidget(noProjectSetLabel, stretch=1)
 
         self.setLayout(layout)
 

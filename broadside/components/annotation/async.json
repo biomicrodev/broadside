@@ -1,0 +1,6 @@
+{
+  "synchronous": false,
+  "num_workers": 8,
+  "use_processes": false,
+  "force_delay_seconds": 0
+}

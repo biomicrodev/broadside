@@ -13,6 +13,7 @@ from PySide2.QtWidgets import (
     QSlider,
     QGridLayout,
     QLabel,
+    QScrollArea,
 )
 from natsort import natsorted
 
@@ -184,7 +185,13 @@ class BlockDiagramEditorView(QGroupBox):
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
+
+        scrollArea = QScrollArea()
+        scrollArea.setLayout(layout)
+        scrollArea.setWidgetResizable(True)
+        scrollLayout = QVBoxLayout()
+        scrollLayout.addWidget(scrollArea)
+        self.setLayout(scrollLayout)
         self.setTitle("Block Diagram")
         self.setContentsMargins(0, 0, 0, 0)
 

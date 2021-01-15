@@ -34,7 +34,8 @@ QHLine {
     color: lightgray;
 }
 
-QLabel#noProjectSelectedLabel {
+QLabel#noProjectSelectedLabel,
+QLabel#noImageSetLabel {
     font-size: 48px;
     color: hsl(0, 0%, 80%);
 }

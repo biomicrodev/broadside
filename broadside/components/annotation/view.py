@@ -1,3 +1,4 @@
+import os
 from typing import List, Any
 
 from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex, QTimer, Signal
@@ -10,14 +11,19 @@ from PySide2.QtWidgets import (
     QHeaderView,
     QProgressBar,
     QLabel,
-    QApplication,
     QGroupBox,
+    QSlider,
 )
-from napari._qt.qt_viewer import QtViewer
-from napari.components import ViewerModel as NapariViewerModel
 
+from ..project.block import BlockDiagramEditorView
 from ..viewermodel import ViewerModel
 from ...models.image import Image
+
+os.environ["NAPARI_ASYNC"] = "1"
+# os.environ["NAPARI_OCTREE"] = "1"
+
+from napari.components import ViewerModel as NapariViewerModel
+from napari._qt.qt_viewer import QtViewer
 
 
 class ImageTableModel(QAbstractTableModel):
@@ -88,61 +94,126 @@ class AnnotationView(QWidget):
 
         # TODO: refactor this logic out
         self._isBusy = False
-        self.isBusy = True
+        # self.isBusy = True
 
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-
+        self.model = model
         self.imageTableModel = ImageTableModel(model.state.images)
         self.imageTableView = ImageTableView()
         self.imageTableView.setModel(self.imageTableModel)
+        self.imageTableView.setColumnWidth(0, 300)
 
         self.initUI()
+        self.initBindings()
 
-    def initUI(self):
-        progressBar = QProgressBar()
-        progressBar.setMaximumHeight(40)
-        progressBar.setMaximumWidth(250)
-        progressBar.setMinimum(0)
-        progressBar.setMaximum(0)
-        progressLabel = QLabel()
-        progressLabel.setText("Loading ...")
-        progressLayout = QVBoxLayout()
-        progressLayout.setAlignment(Qt.AlignCenter)
-        progressLayout.addStretch(1)
-        progressLayout.addWidget(progressBar)
-        progressLayout.addWidget(progressLabel)
-        progressLayout.addStretch(1)
-        progressWidget = QWidget()
-        progressWidget.setLayout(progressLayout)
+    def initUI(self) -> None:
+        noImageSetLabel = QLabel()
+        noImageSetLabel.setObjectName("noImageSetLabel")
+        noImageSetLabel.setAlignment(Qt.AlignCenter)
+        noImageSetLabel.setText("No image selected")
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.imageTableView)
+        imageTableViewLayout = QVBoxLayout()
+        imageTableViewLayout.addWidget(self.imageTableView)
         imageTableBox = QGroupBox()
         imageTableBox.setTitle("Images")
-        imageTableBox.setLayout(layout)
+        imageTableBox.setLayout(imageTableViewLayout)
+
+        imageTableSplitter = QSplitter()
+        imageTableSplitter.setHandleWidth(12)
+        imageTableSplitter.setOrientation(Qt.Vertical)
+        imageTableSplitter.addWidget(imageTableBox)
+        imageTableSplitter.setSizes([500, 500])
+        self.imageTableSplitter = imageTableSplitter
 
         splitter = QSplitter()
-        splitter.setHandleWidth(8)
+        splitter.setHandleWidth(12)
         splitter.setObjectName("annotationSplitter")
         splitter.setOrientation(Qt.Horizontal)
-
-        splitter.addWidget(imageTableBox)
-        splitter.addWidget(progressWidget)
-
-        splitter.setSizes([25, 75])
+        splitter.addWidget(imageTableSplitter)
+        splitter.addWidget(noImageSetLabel)
+        splitter.setSizes([200, 300])
         self.splitter = splitter
 
         layout = QVBoxLayout()
         layout.addWidget(splitter)
         self.setLayout(layout)
 
-        QTimer.singleShot(0, self.load)
+    def initBindings(self) -> None:
+        self.imageTableView.doubleClicked.connect(self.loadImage)
 
-    def load(self):
-        self.napariViewerModel = NapariViewerModel()
-        self.napariViewerModel.theme = "light"
-        self.napariViewer = QtViewer(self.napariViewerModel)
-        self.splitter.replaceWidget(1, self.napariViewer)
+    def loadImage(self, index: QModelIndex) -> None:
+        index = index.row()
+        self.isBusy = True
+
+        viewerWidget = self.splitter.widget(1)
+        if isinstance(viewerWidget, QLabel):
+            adjustWidget = self._createAdjustWidget(3)
+
+            # need to load napari viewer here
+            viewerModel = self.napariViewerModel = NapariViewerModel()
+            viewerModel.theme = "light"
+
+            napariViewer = QtViewer(viewerModel)
+            napariViewer.setWindowFlags(Qt.Widget)
+            self.napariViewer = napariViewer
+
+            # create image viewer here
+            imageViewer = QSplitter()
+            imageViewer.setOrientation(Qt.Horizontal)
+            imageViewer.setHandleWidth(12)
+            imageViewer.addWidget(adjustWidget)
+            imageViewer.addWidget(napariViewer)
+            self.imageViewer = imageViewer
+
+            self.splitter.replaceWidget(1, imageViewer)
+            self.splitter.setSizes([200, 300])
+
+        image: Image = self.model.state.images[index]
+
+        # set up block diagram editor
+        blockName = image.block_name
+        block = next(
+            (block for block in self.model.state.blocks if block.name == blockName),
+            None,
+        )
+        if block is None:
+            return
+        blockDiagramEditorView = BlockDiagramEditorView(block, self.model.state.devices)
+        blockDiagramEditorView.diagramWidget.setEnabled(False)
+        if self.imageTableSplitter.count() == 1:
+            self.imageTableSplitter.addWidget(blockDiagramEditorView)
+        else:
+            self.imageTableSplitter.replaceWidget(1, blockDiagramEditorView)
+
+        # remove all layers; can't do directly
+        layers = self.napariViewerModel.layers
+        layers.select_all()
+        layers.remove_selected()
+
+        # unset all other images; TODO: does this actually help with memory usage?
+        for im in self.model.state.images:
+            im.pixels = None
+
+        image.load(self.model.path)
+
+        # add image
+        name = image.relpath.name
+        pixels = image.pixels
+        pyramids = pixels.pyramids + ([pixels.background] if pixels.background else [])
+        for pyramid in pyramids:
+            scale = pyramid.mpp
+            scale = (scale.y, scale.x)
+
+            translate = pyramid.offset
+            translate = (translate.y, translate.x)
+
+            if pixels.file_format == "scn" and pixels.axes != "YXS":
+                scale = (1,) + scale
+                translate = (0,) + translate
+
+            self.napariViewerModel.add_image(
+                data=pyramid.layers, name=name, scale=scale, translate=translate
+            )
+
         self.isBusy = False
 
     @property
@@ -154,3 +225,14 @@ class AnnotationView(QWidget):
         if self._isBusy is not val:
             self._isBusy = val
             self.isBusyChanged.emit()
+
+    def _createAdjustWidget(self, channels: int) -> QWidget:
+        label = QLabel("slider go here")
+
+        adjustLayout = QVBoxLayout()
+        adjustLayout.addWidget(label)
+
+        adjustWidget = QWidget()
+        adjustWidget.setLayout(adjustLayout)
+
+        return adjustWidget

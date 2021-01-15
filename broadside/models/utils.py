@@ -1,4 +1,5 @@
 import math
+from typing import List, Tuple
 
 twopi = math.pi * 2
 
@@ -27,6 +28,9 @@ class PointF:
     def __repr__(self) -> str:
         return f"PointF(x={self.x}, y={self.y})"
 
+    def as_tuple(self) -> Tuple[float, float]:
+        return (self.x, self.y)
+
 
 class PointI:
     def __init__(self, /, x: int = None, y: int = None):
@@ -54,6 +58,9 @@ class PointI:
 
     def __repr__(self) -> str:
         return f"PointI(x={self.x}, y={self.y})"
+
+    def as_list(self) -> Tuple[int, int]:
+        return (self.x, self.y)
 
 
 def clip_angle(val: float) -> float:

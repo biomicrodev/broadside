@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Type, List
 
-from PySide2.QtCore import Qt
+from PySide2.QtCore import Qt, Slot
 from PySide2.QtGui import QCloseEvent
 from PySide2.QtWidgets import QApplication, QMessageBox
 

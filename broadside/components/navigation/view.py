@@ -84,7 +84,7 @@ class IndexWidget(QWidget):
         )
         self.indexLabel.setStyleSheet(indexLabelStyleSheet)
 
-        textLabelStyleSheet = f"margin-top: 2px; color: {self.textColors[state]}"
+        textLabelStyleSheet = f"color: {self.textColors[state]}"
         self.textLabel.setStyleSheet(textLabelStyleSheet)
 
 
