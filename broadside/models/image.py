@@ -74,7 +74,6 @@ class Annotation:
 
 @dataclass
 class Color(Serializable):
-    # [0..1]?)
     r: float
     g: float
     b: float

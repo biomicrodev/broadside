@@ -149,7 +149,7 @@ class EditableTabWidget(QTabWidget):
         count = self.count()
         if count >= 1:
             addIcon = QIcon()
-            addIcon.addFile("broadside/resources/icons/add-24px.svg")
+            addIcon.addFile("broadside/resources/icons/add.svg")
             self.addTabButton.setIcon(addIcon)
             self.addTabButton.setText(None)
             self.addTabButton.setFixedSize(self.buttonSize, self.buttonSize)

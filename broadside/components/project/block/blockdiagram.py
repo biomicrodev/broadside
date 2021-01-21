@@ -185,6 +185,7 @@ class BlockDiagramEditorView(QGroupBox):
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
+        self.innerLayout = layout
 
         scrollArea = QScrollArea()
         scrollArea.setLayout(layout)
@@ -281,14 +282,13 @@ class BlockDiagramEditorView(QGroupBox):
         currentValue = self.sliderWidget.value
 
         # remove old slider
-        layout: QHBoxLayout = self.layout()
-        layout.removeWidget(self.sliderWidget)
+        self.innerLayout.removeWidget(self.sliderWidget)
         self.sliderWidget.deleteLater()
 
         # create new slider
         self.sliderWidget = LabeledSlider(levels)
         self.sliderWidget.value = currentValue
-        layout.insertWidget(0, self.sliderWidget)
+        self.innerLayout.insertWidget(0, self.sliderWidget)
 
         self.sliderWidget.slider.valueChanged.connect(lambda: self.updateLevel())
         self.updateLevel()

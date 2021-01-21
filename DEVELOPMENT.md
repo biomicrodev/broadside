@@ -138,3 +138,5 @@ If it does get that complex though, one idea would be to have a `ProjectState` c
 The layout of views and associated models should be structured like a tree, and events should propagate along its branches. If two nodes that aren't direct descendants pass events to each other, that may quickly get difficult to manage.
 
 Because the application is not so big, we can get away with structuring reactivity as follows: load the session state from record state, populate the screen state using the session state, and all subsequent changes flow from screen to session.
+
+To manage the structure of the user interface in a mentally untaxing way, we create regular python objects for presentation logic, while the custom qt widgets are 'dumb' and do not handle much logic.

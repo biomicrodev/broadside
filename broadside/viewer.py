@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Type, List
 
-from PySide2.QtCore import Qt, Slot
+from PySide2.QtCore import Qt
 from PySide2.QtGui import QCloseEvent
 from PySide2.QtWidgets import QApplication, QMessageBox
 
@@ -19,9 +19,7 @@ from .components.viewermodel import ViewerModel
 class Viewer:
     log = logging.getLogger(__name__)
 
-    def __init__(self, app: QApplication, *, theme: str = "light", path: Path = None):
-        self.app = app  # or should I use QApplication.instance()?
-
+    def __init__(self, *, theme: str = "light", path: Path = None):
         self.current_editor: Optional[Type[Editor]] = None
         self.editors: List[Type[Editor]] = [
             ProjectEditor,

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g transform="translate(50, 50) rotate(45)">
+    <polygon points="
+      -3,-25 3,-25
+      3,-3
+      25,-3 25,3
+      3,3
+      3,25 -3,25
+      -3,3
+      -25,3 -25,-3
+      -3,-3"/>
+  </g>
+</svg>
