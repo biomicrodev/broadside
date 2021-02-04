@@ -1,8 +1,8 @@
 from typing import List
 
-from PySide2.QtCore import Qt, Signal
-from PySide2.QtGui import QPainter
-from PySide2.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QPainter, QWheelEvent
+from qtpy.QtWidgets import (
     QWidget,
     QGraphicsScene,
     QGraphicsView,
@@ -113,6 +113,15 @@ class BlockDiagramView(QGraphicsView):
         self.verticalScrollBar().setEnabled(False)
         self.horizontalScrollBar().setEnabled(False)
 
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        scale = 1.25
+
+        if event.delta() > 0:
+            self.scale(scale, scale)
+        else:
+            self.scale(1 / scale, 1 / scale)
+        super().wheelEvent(event)
+
 
 class BlockDiagramWidget(QWidget):
     def __init__(self, *args, **kwargs):
@@ -193,7 +202,7 @@ class BlockDiagramEditorView(QGroupBox):
         scrollLayout = QVBoxLayout()
         scrollLayout.addWidget(scrollArea)
         self.setLayout(scrollLayout)
-        self.setTitle("Block Diagram")
+        self.setTitle(f"Block Diagram for {block.name}")
         self.setContentsMargins(0, 0, 0, 0)
 
         self.initIndicators()

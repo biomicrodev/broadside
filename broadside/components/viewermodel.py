@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict
 
-from PySide2.QtCore import QObject, Signal
+from qtpy.QtCore import QObject, Signal
 
 from .task import Runner
 from ..models.state import State

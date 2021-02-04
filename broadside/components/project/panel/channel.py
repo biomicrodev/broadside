@@ -1,7 +1,7 @@
 import logging
 from typing import List, Any, Type
 
-from PySide2.QtCore import (
+from qtpy.QtCore import (
     QAbstractTableModel,
     QModelIndex,
     Qt,
@@ -9,8 +9,8 @@ from PySide2.QtCore import (
     QAbstractItemModel,
     QItemSelectionModel,
 )
-from PySide2.QtGui import QIcon
-from PySide2.QtWidgets import (
+from qtpy.QtGui import QIcon
+from qtpy.QtWidgets import (
     QTableView,
     QAbstractItemView,
     QHeaderView,

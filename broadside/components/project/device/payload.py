@@ -2,7 +2,7 @@ import copy
 import logging
 from typing import List, Any, Type, Tuple
 
-from PySide2.QtCore import (
+from qtpy.QtCore import (
     QAbstractTableModel,
     QModelIndex,
     Qt,
@@ -10,7 +10,7 @@ from PySide2.QtCore import (
     Signal,
     QAbstractItemModel,
 )
-from PySide2.QtWidgets import (
+from qtpy.QtWidgets import (
     QWidget,
     QTableView,
     QAbstractItemView,

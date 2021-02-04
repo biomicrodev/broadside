@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Type, Callable, Any
 
-from PySide2.QtCore import QObject, Signal, QThread, QTimer
+from qtpy.QtCore import QObject, Signal, QThread, QTimer
 
 
 @dataclass(frozen=True)

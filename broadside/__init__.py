@@ -1,10 +1,19 @@
 import logging
+import os
 import sys
 from pathlib import Path
 
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QApplication
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QApplication
 
+# for napari
+os.environ["NAPARI_ASYNC"] = "1"
+# os.environ["NAPARI_OCTREE"] = "1"
+
+QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+
+# import after setting environment variables
 from .viewer import Viewer
 
 logging.basicConfig(
@@ -16,9 +25,6 @@ log = logging.getLogger(__name__)
 
 
 def run():
-    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)  # needed due to napari
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-
     app = QApplication()
     app.setApplicationName("Broadside")
 

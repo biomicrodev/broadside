@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from PySide2.QtCore import Signal
-from PySide2.QtWidgets import QTabBar
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QTabBar
 
 from .block import BlockListEditor
 from .device import DeviceListEditor

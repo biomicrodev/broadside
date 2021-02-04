@@ -1,6 +1,6 @@
 import logging
 
-from PySide2.QtCore import QObject, Signal
+from qtpy.QtCore import QObject, Signal
 
 
 class NavigatorModel(QObject):

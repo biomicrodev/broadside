@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
 
-from PySide2.QtCore import Qt, Signal, QEvent
-from PySide2.QtGui import QCloseEvent
-from PySide2.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QCloseEvent
+from qtpy.QtWidgets import (
     QMainWindow,
     QAction,
     QMenuBar,
@@ -104,22 +104,22 @@ class MainWindow(QMainWindow):
         self.aboutAction.triggered.connect(lambda: showAboutDialog(self))
 
     def initLayout(self) -> None:
-        editorViewContainer = QVBoxLayout()
-        editorViewContainer.setSpacing(0)
-        editorViewContainer.setContentsMargins(0, 0, 0, 0)
-        editorViewContainer.addWidget(QWidget())
-        self.editorViewContainer = editorViewContainer
+        editorLayout = QVBoxLayout()
+        editorLayout.setSpacing(0)
+        editorLayout.setContentsMargins(0, 0, 0, 0)
+        editorLayout.addWidget(QWidget())
+        self.editorLayout = editorLayout
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.addWidget(self.navWidget, stretch=0)
-        layout.addWidget(QHLine(), stretch=0)
-        layout.addLayout(self.editorViewContainer, stretch=1)
+        parentLayout = QVBoxLayout()
+        parentLayout.setContentsMargins(0, 0, 0, 0)
+        parentLayout.setSpacing(0)
+        parentLayout.addWidget(self.navWidget, stretch=0)
+        parentLayout.addWidget(QHLine(), stretch=0)
+        parentLayout.addLayout(self.editorLayout, stretch=1)
 
-        widget = QWidget()
-        widget.setLayout(layout)
-        self.setCentralWidget(widget)
+        parentWidget = QWidget()
+        parentWidget.setLayout(parentLayout)
+        self.setCentralWidget(parentWidget)
 
     def toggleTheme(self) -> None:
         if self.theme == "light":
@@ -147,9 +147,9 @@ class MainWindow(QMainWindow):
 
     def setEditorView(self, widget: QWidget) -> None:
         # delete old widget ...
-        item: QLayoutItem = self.editorViewContainer.takeAt(0)
+        item: QLayoutItem = self.editorLayout.takeAt(0)
         if item.widget() is not None:
             item.widget().deleteLater()
 
         # ... and set new widget
-        self.editorViewContainer.addWidget(widget)
+        self.editorLayout.addWidget(widget)

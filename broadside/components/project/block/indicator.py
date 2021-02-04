@@ -2,8 +2,8 @@ import math
 import time
 from typing import List, Tuple
 
-from PySide2.QtCore import QObject, Signal, Qt, QPointF, QRectF
-from PySide2.QtGui import (
+from qtpy.QtCore import QObject, Signal, Qt, QPointF, QRectF
+from qtpy.QtGui import (
     QPen,
     QMouseEvent,
     QPolygonF,
@@ -12,7 +12,7 @@ from PySide2.QtGui import (
     QTextBlockFormat,
     QTextCursor,
 )
-from PySide2.QtWidgets import (
+from qtpy.QtWidgets import (
     QWidget,
     QGraphicsEllipseItem,
     QGraphicsItem,

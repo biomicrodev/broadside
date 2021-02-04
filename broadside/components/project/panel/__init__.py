@@ -1,8 +1,8 @@
 import logging
 from typing import Set
 
-from PySide2.QtCore import Signal
-from PySide2.QtWidgets import QWidget, QVBoxLayout, QTabBar, QMessageBox, QScrollArea
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QTabBar, QMessageBox, QScrollArea
 
 from .channel import ChannelTableEditorView
 from ...color import Color

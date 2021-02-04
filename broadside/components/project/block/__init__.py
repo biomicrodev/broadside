@@ -1,8 +1,8 @@
 import logging
 from typing import List, Set
 
-from PySide2.QtCore import Signal
-from PySide2.QtWidgets import (
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import (
     QWidget,
     QGridLayout,
     QVBoxLayout,

@@ -2,14 +2,14 @@ import logging
 from pathlib import Path
 from typing import List, Any, Tuple
 
-from PySide2.QtCore import (
+from qtpy.QtCore import (
     QAbstractTableModel,
     QModelIndex,
     Qt,
     Signal,
     QAbstractItemModel,
 )
-from PySide2.QtWidgets import (
+from qtpy.QtWidgets import (
     QTableView,
     QAbstractItemView,
     QHeaderView,
@@ -33,6 +33,9 @@ from ....models.panel import Panel
 
 
 def clearLayout(layout: QLayout) -> None:
+    if layout.count() == 0:
+        return
+
     item: QLayoutItem = layout.takeAt(0)
     while item is not None:
         if item.widget() is not None:

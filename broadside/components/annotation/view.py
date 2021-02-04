@@ -1,29 +1,22 @@
-import os
 from typing import List, Any
 
-from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex, QTimer, Signal
-from PySide2.QtWidgets import (
+from qtpy.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal
+from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QSplitter,
     QTableView,
     QAbstractItemView,
     QHeaderView,
-    QProgressBar,
     QLabel,
     QGroupBox,
-    QSlider,
 )
+from napari._qt.qt_viewer import QtViewer
+from napari.components import ViewerModel as NapariViewerModel
 
 from ..project.block import BlockDiagramEditorView
 from ..viewermodel import ViewerModel
 from ...models.image import Image
-
-os.environ["NAPARI_ASYNC"] = "1"
-# os.environ["NAPARI_OCTREE"] = "1"
-
-from napari.components import ViewerModel as NapariViewerModel
-from napari._qt.qt_viewer import QtViewer
 
 
 class ImageTableModel(QAbstractTableModel):
@@ -183,6 +176,7 @@ class AnnotationView(QWidget):
             self.imageTableSplitter.addWidget(blockDiagramEditorView)
         else:
             self.imageTableSplitter.replaceWidget(1, blockDiagramEditorView)
+        self.imageTableSplitter.setSizes([200, 300])
 
         # remove all layers; can't do directly
         layers = self.napariViewerModel.layers
@@ -227,7 +221,7 @@ class AnnotationView(QWidget):
             self.isBusyChanged.emit()
 
     def _createAdjustWidget(self, channels: int) -> QWidget:
-        label = QLabel("slider go here")
+        label = QLabel("sliders go here")
 
         adjustLayout = QVBoxLayout()
         adjustLayout.addWidget(label)
@@ -236,3 +230,20 @@ class AnnotationView(QWidget):
         adjustWidget.setLayout(adjustLayout)
 
         return adjustWidget
+
+
+class AnnotationView2(QWidget):
+    isBusyChanged = Signal()
+
+    @property
+    def isBusy(self) -> bool:
+        return self._isBusy
+
+    @isBusy.setter
+    def isBusy(self, val: bool) -> None:
+        if self._isBusy is not val:
+            self._isBusy = val
+            self.isBusyChanged.emit()
+
+    def __init__(self, model: ViewerModel, *args, **kwargs):
+        super().__init__(*args, **kwargs)

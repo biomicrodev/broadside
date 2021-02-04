@@ -1,2 +1,0 @@
---editable=git+git://github.com/mpicbg-csbd/stardist.git@0.6.1#egg=stardist
---editable=git+git://github.com/napari/napari.git@master#egg=napari

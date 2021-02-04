@@ -1,8 +1,8 @@
 import logging
-from typing import Set, List
+from typing import Set
 
-from PySide2.QtCore import Signal, Qt
-from PySide2.QtWidgets import (
+from qtpy.QtCore import Signal, Qt
+from qtpy.QtWidgets import (
     QWidget,
     QLabel,
     QComboBox,

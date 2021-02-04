@@ -1,6 +1,6 @@
 from typing import List
 
-from PySide2.QtCore import Qt
+from qtpy.QtCore import Qt
 
 from .model import NavigatorModel
 from .view import NavigatorWidget

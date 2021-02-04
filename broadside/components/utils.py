@@ -2,7 +2,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional, List, Any
 
-from PySide2.QtCore import (
+from qtpy.QtCore import (
     Qt,
     QDir,
     Signal,
@@ -11,7 +11,7 @@ from PySide2.QtCore import (
     QModelIndex,
     QAbstractListModel,
 )
-from PySide2.QtGui import (
+from qtpy.QtGui import (
     QFontMetrics,
     QMouseEvent,
     QResizeEvent,
@@ -19,7 +19,7 @@ from PySide2.QtGui import (
     QPainter,
     QPen,
 )
-from PySide2.QtWidgets import (
+from qtpy.QtWidgets import (
     QFrame,
     QLabel,
     QMessageBox,

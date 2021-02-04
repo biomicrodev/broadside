@@ -1,4 +1,4 @@
-from PySide2.QtWidgets import QWidget, QLabel, QVBoxLayout
+from qtpy.QtWidgets import QWidget, QLabel, QVBoxLayout
 
 
 class AnalysisView(QWidget):

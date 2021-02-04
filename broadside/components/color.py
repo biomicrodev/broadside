@@ -1,6 +1,6 @@
 from enum import Enum
 
-from PySide2.QtGui import QColor
+from qtpy.QtGui import QColor
 
 
 class Color(Enum):

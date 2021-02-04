@@ -1,9 +1,9 @@
 from enum import Enum, auto
 from typing import List
 
-from PySide2.QtCore import Qt, QPointF, QEvent
-from PySide2.QtGui import QPainter, QPen
-from PySide2.QtWidgets import (
+from qtpy.QtCore import Qt, QPointF, QEvent
+from qtpy.QtGui import QPainter, QPen
+from qtpy.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QPushButton,

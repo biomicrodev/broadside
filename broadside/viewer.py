@@ -2,9 +2,9 @@ import logging
 from pathlib import Path
 from typing import Optional, Type, List
 
-from PySide2.QtCore import Qt
-from PySide2.QtGui import QCloseEvent
-from PySide2.QtWidgets import QApplication, QMessageBox
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QCloseEvent
+from qtpy.QtWidgets import QApplication, QMessageBox
 
 from .components.analysis import AnalysisEditor
 from .components.annotation import AnnotationEditor
@@ -104,6 +104,7 @@ class Viewer:
 
         elif isinstance(self.current_editor, AnnotationEditor):
             self.current_editor: AnnotationEditor
+
             # self.current_editor.view.activeImageChanged.connect(
             #     lambda filename: self.update_window(filename=filename)
             # )

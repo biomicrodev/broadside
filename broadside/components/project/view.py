@@ -1,7 +1,7 @@
 import logging
 
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import (
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import (
     QWidget,
     QLabel,
     QHBoxLayout,

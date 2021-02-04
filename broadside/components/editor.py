@@ -1,4 +1,7 @@
-from PySide2.QtCore import QObject, Signal
+from typing import Optional
+
+from qtpy.QtCore import QObject, Signal
+from qtpy.QtWidgets import QWidget
 
 
 class Editor(QObject):
@@ -11,7 +14,7 @@ class Editor(QObject):
         super().__init__(*args, **kwargs)
 
         self._isValid: bool = False
-        self.view = None
+        self.view: Optional[QWidget] = None
 
     @property
     def isValid(self) -> bool:
