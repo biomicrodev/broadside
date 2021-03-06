@@ -10,8 +10,9 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate broadside
 
 pyinstaller \
-  --onefile \
+  --onedir \
   --windowed \
+  --noconfirm \
   --distpath "${PROJECT_ROOT}/dist/" \
   --workpath "${PROJECT_ROOT}/build/" \
   "${PROJECT_ROOT}/app.spec"

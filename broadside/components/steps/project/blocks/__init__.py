@@ -68,9 +68,8 @@ class BlocksEditorView(QWidget):
     def styleInvalidTabs(self, indexes: Set[int]) -> None:
         tabBar: QTabBar = self.tabWidget.tabBar()
         for index in range(tabBar.count()):
-            tabBar.setTabTextColor(
-                index, QColor(*(Color.Red if index in indexes else Color.Black).value)
-            )
+            color = Color.Red if index in indexes else Color.Black
+            tabBar.setTabTextColor(index, QColor(*(color.value)))
 
 
 class BlocksEditor(Editor):
@@ -90,8 +89,8 @@ class BlocksEditor(Editor):
         tab_widget = self._view.tabWidget
         tab_widget.addTabButton.clicked.connect(lambda _: self.add_block())
         tab_widget.tabCloseRequested.connect(self.ask_remove_block)
-        tab_widget.tabMoved.connect(blocks.swap)
-        #
+        tab_widget.tabMoved.connect(lambda ind1, ind2: blocks.swap(ind1, ind2))
+
         def update_name(index: int) -> None:
             name = tab_widget.tabText(index)
             block: Block = blocks[index]

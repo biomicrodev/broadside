@@ -43,9 +43,8 @@ class PanelsEditorView(QWidget):
     def styleInvalidTabs(self, indexes: Set[int]) -> None:
         tabBar: QTabBar = self.tabWidget.tabBar()
         for index in range(tabBar.count()):
-            tabBar.setTabTextColor(
-                index, QColor(*(Color.red if index in indexes else Color.Black).value)
-            )
+            color = Color.red if index in indexes else Color.Black
+            tabBar.setTabTextColor(index, QColor(*(color.value)))
 
 
 class PanelsEditor(Editor):
@@ -66,7 +65,7 @@ class PanelsEditor(Editor):
         tab_widget = self._view.tabWidget
         tab_widget.addTabButton.clicked.connect(lambda _: self.add_panel())
         tab_widget.tabCloseRequested.connect(self.ask_delete_panel)
-        tab_widget.tabMoved.connect(panels.swap)
+        tab_widget.tabMoved.connect(lambda ind1, ind2: panels.swap(ind1, ind2))
 
         def update_name(index: int) -> None:
             name = tab_widget.tabText(index)
