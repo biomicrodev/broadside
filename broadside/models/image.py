@@ -13,8 +13,8 @@ from tifffile import TiffFile, TiffPageSeries, TiffPage
 from tifffile.tifffile import ZarrTiffStore
 from zarr import Group
 
-from .serializable import Serializable
-from .utils import PointF
+from ..utils.serializable import Serializable
+from ..utils.geom import PointF
 
 NS_SCN = "{http://www.leica-microsystems.com/scn/2010/10/01}"
 
@@ -188,11 +188,11 @@ class Image(Serializable):
 
     def load(self, basepath: Path) -> None:
         if self.pixels is None:
-            self.log.info(f"Loading {self.relpath}")
+            self.log.debug(f"Loading {self.relpath}")
             self.pixels = normalize(basepath / Image.images_dir / self.relpath)
-            self.log.info(f"Load {self.relpath} complete")
+            self.log.debug(f"Load {self.relpath} complete")
         else:
-            self.log.info(f"{self.relpath}: Pixels already loaded")
+            self.log.debug(f"{self.relpath}: Pixels already loaded")
 
         annotations_dir = basepath / Annotation.annotations_dir / self.relpath.parent
         annotations_dir.mkdir(parents=True, exist_ok=True)
@@ -260,7 +260,7 @@ def get_svs_layers(path: Path, series: TiffPageSeries) -> List[da.Array]:
 
 
 def get_scn_pyramids(
-    path: Path, metadata: ET.Element, series: List[TiffPageSeries]
+        path: Path, metadata: ET.Element, series: List[TiffPageSeries]
 ) -> List[Pyramid]:
     """
     SCN files contain metadata in OME-XML format.

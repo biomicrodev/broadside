@@ -7,33 +7,33 @@ from .view import NavigatorWidget
 
 
 class Navigator:
-    def __init__(self, labels: List[str]):
+    def __init__(self, *, labels: List[str]):
         n = len(labels)
 
         self.model = NavigatorModel(n)
-        self.view = NavigatorWidget(labels=labels)
+        self._view = NavigatorWidget(labels=labels)
 
         self.init_bindings()
         self.refresh()
 
     def init_bindings(self):
-        self.view.backButton.clicked.connect(lambda: self.model.moveBack())
-        self.view.nextButton.clicked.connect(lambda: self.model.moveNext())
+        self._view.backButton.clicked.connect(lambda _: self.model.move_back())
+        self._view.nextButton.clicked.connect(lambda _: self.model.move_next())
 
-        self.model.isValidChanged.connect(lambda: self.refresh())
-        self.model.indexChanged.connect(lambda: self.refresh())
+        self.model.events.is_valid.connect(lambda _: self.refresh())
+        self.model.events.index.connect(lambda _: self.refresh())
 
     def refresh(self):
-        self.view.backButton.setEnabled(not self.model.first)
-        self.view.backButton.setCursor(
+        self._view.backButton.setDisabled(self.model.first)
+        self._view.backButton.setCursor(
             Qt.PointingHandCursor if (not self.model.first) else Qt.ForbiddenCursor
         )
 
-        self.view.nextButton.setEnabled((not self.model.last) and self.model.isValid)
-        self.view.nextButton.setCursor(
+        self._view.nextButton.setEnabled((not self.model.last) and self.model.is_valid)
+        self._view.nextButton.setCursor(
             Qt.PointingHandCursor
-            if (not self.model.last) and self.model.isValid
+            if (not self.model.last) and self.model.is_valid
             else Qt.ForbiddenCursor
         )
 
-        self.view.setState(index=self.model.index, isComplete=self.model.isValid)
+        self._view.setState(index=self.model.index, is_complete=self.model.is_valid)

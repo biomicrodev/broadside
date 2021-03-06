@@ -1,41 +1,45 @@
-/* Globals */
+/* All widgets */
 QWidget {
-    font-family: 'Ubuntu', sans-serif;
-    color: hsl(0, 0%, 95%);
+    background-color: hsl(0, 0%, 10%);
+    color: hsl(0, 0%, 90%);
 }
 
-QMainWindow {
-    background-color: hsl(0, 0%, 5%);
-}
-
-/* Menu Bar */
-QMenuBar {
-    font-size: 10pt;
-    spacing: 0px;
-}
-
-QMenuBar::item {
-    border-top: 0;
-    border-left: 0;
-    border-right: 0;
-    border-bottom: 1px solid lightgray;
-    padding: 3px 6px;
-}
-
-QMenuBar::item:pressed {
+/* Text boxes */
+QPlainTextEdit {
     background-color: hsl(0, 0%, 20%);
 }
 
-QPushButton#selectProjectButton {
-    padding: 15px 25px;
-    font-size: 18px;
+/* Menu bar */
+QMenuBar::item:pressed {
+    background-color: hsl(0, 0%, 30%);
 }
 
+/* Menu bar dropdowns */
+QMenu:selected {
+    background-color: hsl(0, 0%, 30%);
+}
+QMenu:disabled {
+    color: hsl(0, 0%, 30%);
+}
+
+/* Buttons */
+QPushButton#backButton,
+QPushButton#nextButton {
+    color: hsl(0, 0%, 95%);
+}
+
+QPushButton#backButton:disabled,
+QPushButton#nextButton:disabled {
+    color: hsl(0, 0%, 30%);
+}
+
+/* Labels */
+QLabel#noProjectSetLabel,
+QLabel#noImageSetLabel {
+    color: hsl(0, 0%, 20%);
+}
+
+/* Miscellaneous */
 QHLine {
     color: lightgray;
-}
-
-QLabel#noProjectSelectedLabel {
-    font-size: 48px;
-    color: hsl(0, 0%, 20%);
 }

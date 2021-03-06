@@ -2,10 +2,12 @@ from typing import Optional
 
 from qtpy.QtWidgets import QWidget
 
-from ..utils.validatable import Validatable
+from ...utils.validatable import Validatable
 
 
-class Editor(Validatable):
+class Step(Validatable):
+    name = ""
+
     def __init__(self):
         super().__init__()
 

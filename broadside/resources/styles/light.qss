@@ -1,47 +1,34 @@
-/* Globals */
+/* All widgets */
 QWidget {
-    font-family: 'Ubuntu', sans-serif;
+    /*background-color: hsl(0, 0%, 90%);*/
+    /*color: hsl(0, 0%, 0%);*/
 }
 
-QMainWindow {
-    background-color: hsl(0, 0%, 95%);
-}
-
-/* Menu Bar */
+/* Menu bar */
 QMenuBar {
-    font-size: 10pt;
-    spacing: 0px;
-}
-
-QMenuBar::item {
-    border-top: 0;
-    border-left: 0;
-    border-right: 0;
-    border-bottom: 1px solid lightgray;
-    padding: 3px 6px;
+    border-bottom-color: lightgray;
 }
 
 QMenuBar::item:pressed {
-    background-color: hsl(0, 0%, 80%);
+    background-color: hsl(0, 0%, 70%);
 }
 
-QPushButton#selectProjectButton {
-    padding: 15px 25px;
-    font-size: 18px;
+/* Buttons */
+QPushButton#backButton,
+QPushButton#nextButton {
+    color: hsl(0, 0%, 5%);
 }
 
-QHLine {
-    color: lightgray;
+QPushButton#backButton:disabled,
+QPushButton#nextButton:disabled {
+    color: hsl(0, 0%, 70%);
 }
 
-QLabel#noProjectSelectedLabel,
-QLabel#noImageSetLabel {
-    font-size: 48px;
-    color: hsl(0, 0%, 80%);
+QPushButton#addTabButton:hover {
+    background-color: hsl(0, 0%, 95%);
 }
-
-QPushButton {
-    height: 22px;
+QPushButton#addTabButton:pressed {
+    background-color: hsl(0, 0%, 85%);
 }
 
 QPushButton#deleteDeviceButton,
@@ -61,37 +48,32 @@ QPushButton#deleteChannelButton:enabled {
     color: white;
 }
 
-QLineEdit[valid=false] {
-    padding: 2px 0;
-    border: 0.5px solid rgb(190, 30, 30);
-    border-radius: 2px;
+/* Labels */
+QLabel#noProjectSetLabel,
+QLabel#noImageSetLabel {
+    color: hsl(0, 0%, 80%);
 }
 
+/* Tab bars */
 QTabBar::close-button {
-    border-radius: 2px;
-    image: url("broadside/resources/icons/close.svg");
-    padding: -2px;
     color: hsl(0, 0%, 10%);
 }
-
 QTabBar::close-button:hover:selected {
     background-color: hsl(0, 0%, 85%);
 }
 QTabBar::close-button:hover:!selected {
     background-color: hsl(0, 0%, 75%);
 }
-
 QTabBar::close-button:pressed {
     background-color: hsl(0, 0%, 70%);
 }
 
-QTabBar::scroller {
-    width: 44px;
+/* Line edit */
+QLineEdit[valid=false] {
+    border-color: rgb(190, 30, 30);
 }
 
-QPushButton#addTabButton:hover {
-    background-color: hsl(0, 0%, 80%);
-}
-QPushButton#addTabButton:pressed {
-    background-color: hsl(0, 0%, 70%);
+/* Miscellaneous */
+QHLine {
+    color: lightgray;
 }

@@ -1,0 +1,65 @@
+/* All widgets */
+QWidget {
+    font-family: 'Ubuntu', sans-serif;
+}
+
+/* Menu bar */
+QMenuBar {
+    font-size: 10pt;
+    spacing: 0px;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+
+QMenuBar::item {
+    border: none;
+    padding: 3px 6px;
+}
+
+/* Menu bar dropdowns */
+
+/* Buttons */
+QPushButton#backButton,
+QPushButton#nextButton {
+    width: 80px;
+    height: 22px;
+    font-size: 16px;
+}
+
+QPushButton#selectProjectButton {
+    padding: 15px 25px;
+    font-size: 18px;
+}
+
+/* Labels */
+QLabel#noProjectSetLabel,
+QLabel#noImageSetLabel {
+    font-size: 48px;
+}
+
+/* Tab bars */
+QTabBar::tab {
+    min-width: 60px;
+}
+QTabBar::close-button {
+    border-radius: 2px;
+    image: url("broadside/resources/icons/close.svg");
+    padding: -2px;
+}
+QTabBar::scroller {
+    width: 44px;
+}
+
+/* Line edit */
+QLineEdit[valid=false] {
+    padding: 2px 0;
+    border-width: 0.5px;
+    border-style: solid;
+    border-radius: 2px;
+}
+
+/* Group boxes */
+QGroupBox {
+    font-size: 14px;
+}
+

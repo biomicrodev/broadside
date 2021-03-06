@@ -2,7 +2,7 @@ from enum import Enum, auto
 from typing import List
 
 from qtpy.QtCore import Qt, QPointF, QEvent
-from qtpy.QtGui import QPainter, QPen
+from qtpy.QtGui import QPainter, QPen, QPolygonF, QColor
 from qtpy.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -11,7 +11,7 @@ from qtpy.QtWidgets import (
     QLabel,
 )
 
-from ..color import Color
+from ...utils.colors import Color
 
 
 class StepStatus(Enum):
@@ -41,16 +41,15 @@ class IndexWidget(QWidget):
 
     def __init__(
         self,
-        *args,
         text: str,
         index: int,
         state: StepStatus = StepStatus.Incomplete,
-        **kwargs,
+        parent: QWidget = None,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(parent)
 
-        self._text: str = text
-        self._index: int = index
+        self._text = text
+        self._index = index
 
         self.initUI()
         self.setState(state)
@@ -95,8 +94,8 @@ class StepProgress(Enum):
 
 class ChevronWidget(QWidget):
     colors = {
-        StepProgress.Enabled: Color.Black.qc(),
-        StepProgress.Disabled: Color.Gray.qc(),
+        StepProgress.Enabled: Color.Black,
+        StepProgress.Disabled: Color.Gray,
     }
 
     def __init__(self, *args, state: StepProgress = StepProgress.Disabled, **kwargs):
@@ -106,24 +105,26 @@ class ChevronWidget(QWidget):
 
         self.setFixedSize(20, 20)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.initPoints()
+        self.initCoords()
 
-    def initPoints(self):
+    def initCoords(self):
         w = 10
         h = 10
         r = 6
-        points = [(-r / 2, r), (r / 2, 0), (-r / 2, -r)]
-        points = [(x + w, y + h) for x, y in points]
-        points = [QPointF(x, y) for x, y in points]
-        self.points = points
+        coords = [(-r / 2, r), (r / 2, 0), (-r / 2, -r)]
+        coords = [(x + w, y + h) for x, y in coords]
+        coords = [QPointF(x, y) for x, y in coords]
+        coords = QPolygonF(coords)
+        self.coords = coords
 
     def paintEvent(self, event: QEvent) -> None:
         color = self.colors[self._state]
+        color = QColor(*(color.value))
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.HighQualityAntialiasing)
         painter.setPen(QPen(color, 2))
-        painter.drawPolyline(self.points)
+        painter.drawPolyline(self.coords)
 
         event.accept()
 
@@ -141,13 +142,14 @@ class NavigatorWidget(QWidget):
                 "Number of steps in NavigationWidget must be greater or equal to 2! "
                 f"Length {len(labels)} passed"
             )
-        self.labels: List[str] = labels
+
+        self.labels = labels
 
         self.indexWidgets: List[IndexWidget] = []
         self.chevronWidgets: List[ChevronWidget] = []
 
         self.initLayout()
-        self.setState(index=0, isComplete=False)
+        self.setState(index=0, is_complete=False)
 
     def initLayout(self):
         sequenceLayout = QHBoxLayout()
@@ -168,14 +170,12 @@ class NavigatorWidget(QWidget):
         # navigation buttons
         backButton = QPushButton()
         backButton.setText("Back")
-        backButton.setFixedSize(80, 30)
-        backButton.setStyleSheet("font-size: 16px")
+        backButton.setObjectName("backButton")
         self.backButton = backButton
 
         nextButton = QPushButton()
         nextButton.setText("Next")
-        nextButton.setFixedSize(80, 30)
-        nextButton.setStyleSheet("font-size: 16px")
+        nextButton.setObjectName("nextButton")
         self.nextButton = nextButton
 
         buttonsLayout = QHBoxLayout()
@@ -193,7 +193,7 @@ class NavigatorWidget(QWidget):
 
         self.setLayout(layout)
 
-    def setState(self, *, index: int, isComplete: bool) -> None:
+    def setState(self, *, index: int, is_complete: bool) -> None:
         if (index < 0) or (index >= len(self.labels)):
             raise IndexError(f"Index {index} out of bounds; length {len(self.labels)}")
 
@@ -201,7 +201,7 @@ class NavigatorWidget(QWidget):
             if i < index:
                 state = StepStatus.Complete
             elif i == index:
-                state = StepStatus.Complete if isComplete else StepStatus.InProgress
+                state = StepStatus.Complete if is_complete else StepStatus.InProgress
             else:
                 state = StepStatus.Incomplete
 
@@ -211,7 +211,7 @@ class NavigatorWidget(QWidget):
             if i < index:
                 state = StepProgress.Enabled
             elif i == index:
-                state = StepProgress.Enabled if isComplete else StepProgress.Disabled
+                state = StepProgress.Enabled if is_complete else StepProgress.Disabled
             else:
                 state = StepProgress.Disabled
 

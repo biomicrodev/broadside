@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import Optional
 
 from qtpy.QtCore import (
     Qt,
@@ -18,6 +18,7 @@ from qtpy.QtGui import (
     QIcon,
     QPainter,
     QPen,
+    QColor,
 )
 from qtpy.QtWidgets import (
     QFrame,
@@ -32,9 +33,11 @@ from qtpy.QtWidgets import (
     QStyledItemDelegate,
     QStyleOptionViewItem,
     QComboBox,
+    QLayoutItem,
+    QLayout,
 )
 
-from .color import Color
+from ..utils.colors import Color
 
 
 class CellState(Enum):
@@ -91,6 +94,7 @@ class EditableTabBar(QTabBar):
     def startEdit(self, tabIndex: int) -> None:
         self.editingTabIndex = tabIndex
         rect: QRect = self.tabRect(tabIndex)
+
         topMargin = 3
         leftMargin = 6
 
@@ -160,7 +164,7 @@ class EditableTabWidget(QTabWidget):
                 self.addTabButton.sizeHint().width() + 10, self.buttonSize
             )
 
-        heightOffset = 4 if count > 1 else 0
+        heightOffset = 3 if count > 1 else 2
 
         totalTabWidth = sum(
             [self.tabBar().tabRect(i).width() for i in range(self.count())]
@@ -168,7 +172,7 @@ class EditableTabWidget(QTabWidget):
         visibleWidth = self.width()
         if visibleWidth > totalTabWidth + self.buttonSize + 3:
             # add button is placed after all the tabs
-            self.addTabButton.move(totalTabWidth + 1, heightOffset)
+            self.addTabButton.move(totalTabWidth + 2, heightOffset)
 
         elif (visibleWidth <= totalTabWidth + self.buttonSize + 3) and (
             visibleWidth >= totalTabWidth
@@ -189,6 +193,7 @@ class LineEditItemDelegate(QStyledItemDelegate):
     ) -> QWidget:
         editor = QLineEdit(parent=parent)
         editor.setAlignment(Qt.AlignCenter)
+        editor.selectAll()
         return editor
 
     def paint(
@@ -205,39 +210,11 @@ class LineEditItemDelegate(QStyledItemDelegate):
             h = option.rect.height() - 1 - padding
 
             pen = QPen()
-            pen.setColor(Color.Red.qc())
+            pen.setColor(QColor(*(Color.Red).value))
             pen.setWidth(1)
 
             painter.setPen(pen)
             painter.drawRect(QRect(x, y, w, h))
-
-
-class NamesModel(QAbstractListModel):
-    """
-    Use a proxy model here possibly? looks like the proxy model needs a base model to
-    already exist, which we don't use (actually we do, just elsewhere). maybe use that
-    here
-    """
-
-    def __init__(self, names: List[str], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.names = names
-
-    def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
-        if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
-            return self.names[index.row()]
-
-        elif role == Qt.TextAlignmentRole:
-            return Qt.AlignCenter
-
-    def rowCount(self, parent: QModelIndex = None, *args, **kwargs):
-        return len(self.names)
-
-    def updateNames(self, names: List[str]) -> None:
-        self.layoutAboutToBeChanged.emit()
-        self.names = names
-        self.layoutChanged.emit()
 
 
 class ComboBoxDelegate(QStyledItemDelegate):
@@ -303,6 +280,15 @@ def showSelectProjectDialog(parent: QWidget = None) -> Optional[Path]:
         return path
 
 
-def updateStyle(w: QWidget) -> None:
-    w.style().unpolish(w)
-    w.style().polish(w)
+def clearLayout(layout: QLayout) -> None:
+    if layout.count() == 0:
+        return
+
+    item: QLayoutItem = layout.takeAt(0)
+    while item is not None:
+        if item.widget() is not None:
+            item.widget().deleteLater()
+        elif item.layout() is not None:
+            item.layout().deleteLater()
+
+        item = layout.takeAt(0)

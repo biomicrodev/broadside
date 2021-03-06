@@ -1,9 +1,9 @@
 import logging
 
-from qtpy.QtCore import QObject, Signal
+from ...utils.events import EventEmitter
 
 
-class NavigatorModel(QObject):
+class NavigatorModel:
     """
     Maneuvering along a sequence of steps.
 
@@ -26,22 +26,26 @@ class NavigatorModel(QObject):
 
     log = logging.getLogger(__name__)
 
-    indexChanged = Signal()
-    isValidChanged = Signal()
+    class Events:
+        def __init__(self):
+            self.index = EventEmitter()
+            self.is_valid = EventEmitter()
 
     def __init__(self, n: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.events = self.Events()
+
         self._n = n
         self._index = 0
-        self._isValid = False
+        self._is_valid = False
 
         # logging
-        self.indexChanged.connect(
-            lambda: self.log.info(f"Index changed to {self.index}"),
+        self.events.index.connect(
+            lambda _: self.log.debug(f"index changed to {self.index}"),
         )
-        self.isValidChanged.connect(
-            lambda: self.log.info(f"isValid changed to {self.isValid}"),
+        self.events.is_valid.connect(
+            lambda _: self.log.debug(f"is_valid changed to {self.is_valid}"),
         )
 
     @property
@@ -52,28 +56,27 @@ class NavigatorModel(QObject):
     def index(self, val: int) -> None:
         val = min(max(val, 0), self._n - 1)  # being lenient here
 
-        if val > self.index and self.isValid:
-            self._index = val
-            self.indexChanged.emit()
-            return
+        if val > self.index:
+            if self.is_valid:
+                self._index = val
+                self.events.index.emit(val)
 
-        if val > self.index and not self.isValid:
-            self.log.warning("Attempting to step ahead when incomplete")
+            else:
+                self.log.warning("Attempting to step ahead when incomplete")
 
-        if val < self.index:
+        elif val < self.index:
             self._index = val
-            self.indexChanged.emit()
-            return
+            self.events.index.emit(val)
 
     @property
-    def isValid(self) -> bool:
-        return self._isValid
+    def is_valid(self) -> bool:
+        return self._is_valid
 
-    @isValid.setter
-    def isValid(self, val: bool) -> None:
-        if self.isValid is not val:
-            self._isValid = val
-            self.isValidChanged.emit()
+    @is_valid.setter
+    def is_valid(self, val: bool) -> None:
+        if self.is_valid is not val:
+            self._is_valid = val
+            self.events.is_valid.emit(val)
 
     @property
     def first(self) -> bool:
@@ -83,8 +86,8 @@ class NavigatorModel(QObject):
     def last(self) -> bool:
         return self.index == (self._n - 1)
 
-    def moveNext(self) -> None:
+    def move_next(self) -> None:
         self.index += 1
 
-    def moveBack(self) -> None:
+    def move_back(self) -> None:
         self.index -= 1

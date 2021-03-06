@@ -1,10 +1,8 @@
-from dataclasses import dataclass
 from typing import Dict, Any
 
-from .serializable import Serializable
+from ..utils.serializable import Serializable
 
 
-@dataclass
 class TaskGraph(Serializable):
     def is_valid(self) -> bool:
         return True

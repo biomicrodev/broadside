@@ -4,21 +4,21 @@ channels:
 dependencies:
   - black>=20.7
   - dask>=2.30
-#  - napari>=0.4
-  - natsort>=7.1
-  - numpy>=1.19
+  - natsort>=7
+  - numpy
   - pip
-  - pyinstaller>=4.0
-  - pyqtgraph>=0.11
-#  - pyside2>=5.13
+  - pyinstaller
+  - pyqtgraph
   - pytest
   - python>=3.8
   - qtpy
   - qtpynodeeditor
+  - rx
   - scikit-image
   - shapely
   - tifffile
-  - tqdm>=4.53
+  - tqdm
+  - zarr
   - pip:
-      - git+git://github.com/mpicbg-csbd/stardist.git@master#egg=stardist
-      - git+git://github.com/napari/napari.git@master#egg=napari
+    - git+git://github.com/mpicbg-csbd/stardist.git@master#egg=stardist
+    - git+git://github.com/napari/napari.git@master
