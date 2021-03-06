@@ -59,15 +59,15 @@ class ProjectStep(Step):
         self.editors = {
             "payloads": PayloadsEditor(self.model),
             "blocks": BlocksEditor(self.model),
-            # "panels": PanelsEditor(self.model),
-            # "images": ImagesEditor(self.model),
+            "panels": PanelsEditor(self.model),
+            "images": ImagesEditor(self.model),
         }
 
         self._view.updateEditors(
             payloadsView=self.editors["payloads"]._view,
             blocksView=self.editors["blocks"]._view,
-            # panelsView=self.editors["panels"]._view,
-            # imagesView=self.editors["images"]._view,
+            panelsView=self.editors["panels"]._view,
+            imagesView=self.editors["images"]._view,
         )
 
         def update_tab_style(editor: Editor):

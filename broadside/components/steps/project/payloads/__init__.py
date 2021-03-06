@@ -183,11 +183,12 @@ class PayloadsEditor(Editor):
         self.state = model.state
         self._view = PayloadsEditorView()
 
+        # payload bindings from model to view
         payloads = self.state.payloads
         payloads.events.added.connect(lambda d: self.payload_added(d["item"]))
         payloads.events.deleted.connect(self.payload_deleted)
 
-        # bindings from view to model
+        # payload bindings from view to model
         tab_widget = self._view.tabWidget
         tab_widget.addTabButton.clicked.connect(lambda _: self.add_payload())
         tab_widget.tabCloseRequested.connect(self.ask_delete_payload)

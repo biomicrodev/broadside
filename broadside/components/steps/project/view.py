@@ -97,8 +97,8 @@ class ProjectView(QWidget):
         *,
         payloadsView: QWidget,
         blocksView: QWidget,
-        # panelsView: QWidget,
-        # imagesView: QWidget
+        panelsView: QWidget,
+        imagesView: QWidget
     ) -> None:
         descriptionTextEdit = QPlainTextEdit()
         self.descriptionTextEdit = descriptionTextEdit
@@ -116,8 +116,8 @@ class ProjectView(QWidget):
         tabWidget.setTabPosition(QTabWidget.North)
         tabWidget.addTab(payloadsView, "Payloads")
         tabWidget.addTab(blocksView, "Blocks")
-        # tabWidget.addTab(panelsView, "Panels")
-        # tabWidget.addTab(imagesView, "Images")
+        tabWidget.addTab(panelsView, "Panels")
+        tabWidget.addTab(imagesView, "Images")
         self.tabWidget = tabWidget
 
         layout = QVBoxLayout()

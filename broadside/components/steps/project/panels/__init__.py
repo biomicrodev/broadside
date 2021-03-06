@@ -57,8 +57,8 @@ class PanelsEditor(Editor):
         self.state = model.state
         self._view = PanelsEditorView()
 
+        # panel bindings from model to view
         panels = self.state.panels
-        panels.events.changed.connect(lambda _: self.validate())
         panels.events.added.connect(lambda d: self.panel_added(d["item"]))
         panels.events.deleted.connect(self.panel_deleted)
 
@@ -90,8 +90,12 @@ class PanelsEditor(Editor):
         self._view.tabWidget.addTab(panel_editor._view, panel.name)
         self._view.tabWidget.setCurrentWidget(panel_editor._view)
 
+        self.validate()
+
     def panel_deleted(self, index: int) -> None:
         self._view.tabWidget.removeTab(index)
+
+        self.validate()
 
     def add_panel(self):
         n_panels = len(self.state.panels)

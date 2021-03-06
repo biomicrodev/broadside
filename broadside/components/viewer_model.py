@@ -196,6 +196,7 @@ class ViewerModel:
         def add_device_bindings(device: Device):
             device.events.name.connect(self._set_stale)
             device.events.payload_name.connect(self._set_stale)
+            device.events.sample_name.connect(self._set_stale)
 
         block.devices.events.added.connect(lambda d: add_device_bindings(d["item"]))
         block.devices.events.changed.connect(self._set_stale)
