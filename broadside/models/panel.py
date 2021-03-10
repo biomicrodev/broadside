@@ -98,8 +98,9 @@ class Panel(Serializable):
     @name.setter
     def name(self, val: str) -> None:
         if self.name != val:
+            old_val = self.name
             self._name = val
-            self.events.name.emit(val)
+            self.events.name.emit({"old": old_val, "new": val})
 
     @property
     def channels(self) -> EventedList[Channel]:

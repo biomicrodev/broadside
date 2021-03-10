@@ -1,16 +1,8 @@
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Any
 
-from qtpy.QtCore import (
-    Qt,
-    QDir,
-    Signal,
-    QRect,
-    QSize,
-    QModelIndex,
-    QAbstractListModel,
-)
+from qtpy.QtCore import Qt, QDir, Signal, QRect, QSize, QModelIndex, QAbstractListModel
 from qtpy.QtGui import (
     QFontMetrics,
     QMouseEvent,
@@ -38,6 +30,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..utils.colors import Color
+from ..utils.events import EventedList
 
 
 class CellState(Enum):
@@ -221,7 +214,7 @@ class ComboBoxDelegate(QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.model = None
+        self.model: Optional[QAbstractListModel] = None
 
     def setModel(self, model: QAbstractListModel) -> None:
         self.model = model
@@ -235,6 +228,74 @@ class ComboBoxDelegate(QStyledItemDelegate):
             editor.setModel(self.model)
 
         return editor
+
+
+class NamesModel(QAbstractListModel):
+    def __init__(self, names: List[str], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.names = names
+
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
+        if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
+            row = index.row()
+            return self.names[row]
+
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignCenter
+
+    def rowCount(self, parent: QModelIndex = None, *args, **kwargs):
+        return len(self.names)
+
+
+class NamesDelegate:
+    def __init__(self, items: EventedList):
+        self.items = items
+        self.names = [item.name for item in items]
+
+        # set up Qt model/view for names
+        self._model = NamesModel(self.names)
+
+        self._view = ComboBoxDelegate()
+        self._view.setModel(self._model)
+
+        # set up bindings
+        items.events.added.connect(lambda d: self.add_name(d["item"].name))
+        items.events.deleted.connect(lambda i: self.delete_name(i))
+        items.events.swapped.connect(lambda d: self.swap_names(d["ind1"], d["ind2"]))
+
+        items.events.added.connect(lambda d: self._add_item_bindings(d["item"]))
+        for item in items:
+            self._add_item_bindings(item)
+
+    def add_name(self, name: str):
+        self._model.layoutAboutToBeChanged.emit()
+        self.names.append(name)
+        self._model.layoutChanged.emit()
+
+    def delete_name(self, row: int):
+        # update model
+        self._model.layoutAboutToBeChanged.emit()
+        del self.names[row]
+        self._model.layoutChanged.emit()
+
+    def swap_names(self, to_: int, from_: int):
+        (self.names[to_], self.names[from_]) = (self.names[from_], self.names[to_])
+
+        to_index = self._model.index(to_, 0)
+        from_index = self._model.index(from_, 0)
+        self._model.dataChanged.emit(to_index, to_index, [Qt.EditRole])
+        self._model.dataChanged.emit(from_index, from_index, [Qt.EditRole])
+
+    def _add_item_bindings(self, item):
+        item.events.name.connect(lambda name: self.update_name(item, name))
+
+    def update_name(self, item, name: str):
+        row = self.items.index(item)
+
+        index = self._model.index(row, 0)
+        self.names[row] = name
+        self._model.dataChanged.emit(index, index, [Qt.EditRole])
 
 
 def showSaveDialog(

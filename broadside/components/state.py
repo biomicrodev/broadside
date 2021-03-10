@@ -182,6 +182,10 @@ class State:
 
         return invalid
 
+    def invalid_image_indexes(self) -> Set[int]:
+        invalid: Set[int] = set()
+        return invalid
+
     def _get_images(self, state_images: List[Dict[str, Any]]) -> List[Image]:
         fs_relpaths: List[Path] = get_pr_image_relpaths(self.path)
 

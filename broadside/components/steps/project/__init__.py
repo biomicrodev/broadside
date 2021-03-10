@@ -72,10 +72,10 @@ class ProjectStep(Step):
 
         def update_tab_style(editor: Editor):
             index = self._view.tabWidget.indexOf(editor._view)
+            color = Color.Black if editor.is_valid else Color.Red
+
             tab_bar: QTabBar = self._view.tabWidget.tabBar()
-            tab_bar.setTabTextColor(
-                index, QColor(*(Color.Black if editor.is_valid else Color.Red).value)
-            )
+            tab_bar.setTabTextColor(index, QColor(*(color.value)))
 
         # whenever any editor changes validation, update project's validation
         for n in self.editors.keys():
@@ -84,7 +84,7 @@ class ProjectStep(Step):
             )
             update_tab_style(self.editors[n])
             self.editors[n].events.is_valid.connect(
-                lambda _: self.events.is_valid.emit()
+                lambda _: self.events.is_valid.emit(self.is_valid)
             )
 
         # set project labels; model is guaranteed to be set here
@@ -107,5 +107,5 @@ class ProjectStep(Step):
         if not self.model.is_set:
             self.is_valid = False
         else:
-            self.model.state.validate()
             self.is_valid = all(editor.is_valid for editor in self.editors.values())
+            self.model.state.validate()

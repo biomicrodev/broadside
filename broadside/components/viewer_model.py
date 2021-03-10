@@ -4,6 +4,7 @@ from typing import Optional
 
 from .state import State
 from ..models.block import Block, Sample, Device, Vector
+from ..models.image import Image
 from ..models.panel import Panel, Channel
 from ..models.payload import Formulation, Payload
 from ..utils.events import EventEmitter
@@ -156,6 +157,10 @@ class ViewerModel:
         for panel in self.state.panels:
             self._add_panel_bindings(panel)
 
+        # image bindings
+        for image in self.state.images:
+            self._add_image_bindings(image)
+
     def _set_stale(self, *args, **kwargs):
         # for convenience
         self.is_stale = True
@@ -224,6 +229,10 @@ class ViewerModel:
         panel.channels.events.changed.connect(self._set_stale)
         for channel in panel.channels:
             add_channel_bindings(channel)
+
+    def _add_image_bindings(self, image: Image):
+        image.events.block_name.connect(self._set_stale)
+        image.events.panel_name.connect(self._set_stale)
 
     def save(self) -> None:
         if not self.is_set:

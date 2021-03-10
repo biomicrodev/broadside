@@ -1,15 +1,9 @@
 import copy
 import logging
-from typing import Any, List, Tuple, Union, Optional
+from typing import Any, List, Tuple
 
 from natsort import natsort_keygen
-from qtpy.QtCore import (
-    QAbstractTableModel,
-    Qt,
-    QModelIndex,
-    QItemSelectionModel,
-    QAbstractListModel,
-)
+from qtpy.QtCore import QAbstractTableModel, Qt, QModelIndex, QItemSelectionModel
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -19,53 +13,12 @@ from qtpy.QtWidgets import (
     QPushButton,
     QHBoxLayout,
     QGroupBox,
-    QStyledItemDelegate,
-    QStyleOptionViewItem,
-    QComboBox,
 )
 
-from ....utils import CellState, LineEditItemDelegate
+from ....utils import CellState, LineEditItemDelegate, NamesDelegate
 from .....models.block import Device, Sample
 from .....models.payload import Payload
 from .....utils.events import EventedList
-
-
-class NamesListModel(QAbstractListModel):
-    def __init__(self, names: List[str], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.names = names
-
-    def data(self, index: QModelIndex, role: Qt.ItemDataRole = None) -> Any:
-        if role in [Qt.DisplayRole, Qt.EditRole, Qt.ToolTipRole]:
-            row = index.row()
-            return self.names[row]
-
-        elif role == Qt.TextAlignmentRole:
-            return Qt.AlignCenter
-
-    def rowCount(self, parent: QModelIndex = None, *args, **kwargs):
-        return len(self.names)
-
-
-class ComboBoxItemDelegate(QStyledItemDelegate):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.model: Optional[QAbstractListModel] = None
-
-    def setModel(self, model: QAbstractListModel) -> None:
-        self.model = model
-
-    def createEditor(
-        self, parent: QWidget, option: QStyleOptionViewItem, index: QModelIndex
-    ) -> QWidget:
-        editor = QComboBox(parent=parent)
-
-        if self.model is not None:
-            editor.setModel(self.model)
-
-        return editor
 
 
 class DevicesTableModel(QAbstractTableModel):
@@ -158,8 +111,8 @@ class DevicesTableView(QTableView):
 
 
 class DevicesEditorView(QWidget):
-    def __init__(self, tableView: DevicesTableView, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tableView: DevicesTableView):
+        super().__init__()
 
         self.tableView = tableView
 
@@ -217,59 +170,6 @@ def device_key(d: Device) -> Tuple[bool, str]:
     return (d.name == ""), d.name
 
 
-NamedType = Union[Payload, Sample]
-
-
-class NamesDelegate:
-    def __init__(self, items: EventedList[NamedType]):
-        self.items = items
-        self.names = [item.name for item in items]
-
-        # set up Qt model/view for names
-        self._model = NamesListModel(self.names)
-
-        self._view = ComboBoxItemDelegate()
-        self._view.setModel(self._model)
-
-        # set up bindings
-        items.events.added.connect(lambda d: self.add_name(d["item"].name))
-        items.events.deleted.connect(lambda i: self.delete_name(i))
-        items.events.swapped.connect(lambda d: self.swap_names(d["ind1"], d["ind2"]))
-
-        items.events.added.connect(lambda d: self._add_item_bindings(d["item"]))
-        for item in items:
-            self._add_item_bindings(item)
-
-    def add_name(self, name: str):
-        self._model.layoutAboutToBeChanged.emit()
-        self.names.append(name)
-        self._model.layoutChanged.emit()
-
-    def delete_name(self, row: int):
-        # update model
-        self._model.layoutAboutToBeChanged.emit()
-        del self.names[row]
-        self._model.layoutChanged.emit()
-
-    def swap_names(self, to_: int, from_: int):
-        (self.names[to_], self.names[from_]) = (self.names[from_], self.names[to_])
-
-        to_index = self._model.index(to_, 0)
-        from_index = self._model.index(from_, 0)
-        self._model.dataChanged.emit(to_index, to_index, [Qt.EditRole])
-        self._model.dataChanged.emit(from_index, from_index, [Qt.EditRole])
-
-    def _add_item_bindings(self, item: NamedType):
-        item.events.name.connect(lambda d: self.update_name(item, d["new"]))
-
-    def update_name(self, item: NamedType, name: str):
-        row = self.items.index(item)
-
-        index = self._model.index(row, 0)
-        self.names[row] = name
-        self._model.dataChanged.emit(index, index, [Qt.EditRole])
-
-
 class DevicesEditor:
     log = logging.getLogger(__name__)
 
@@ -283,7 +183,7 @@ class DevicesEditor:
         self.payloads = payloads
         self.samples = samples
 
-        # set up Qt model/view for payload names
+        # set up Qt model/view for payload and sample names
         payload_names_delegate = NamesDelegate(payloads)
         sample_names_delegate = NamesDelegate(samples)
 

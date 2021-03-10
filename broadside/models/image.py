@@ -13,8 +13,9 @@ from tifffile import TiffFile, TiffPageSeries, TiffPage
 from tifffile.tifffile import ZarrTiffStore
 from zarr import Group
 
-from ..utils.serializable import Serializable
+from ..utils.events import EventedList, EventEmitter
 from ..utils.geom import PointF
+from ..utils.serializable import Serializable
 
 NS_SCN = "{http://www.leica-microsystems.com/scn/2010/10/01}"
 
@@ -64,12 +65,39 @@ class PyramidGroup:
     background: Optional[Pyramid] = None
 
 
-@dataclass
 class Annotation:
-    name: str
-    polygon: Polygon = None
-
     annotations_dir = "annotations"
+
+    class Events:
+        def __init__(self):
+            self.name = EventEmitter()
+            self.polygon = EventEmitter()
+
+    def __init__(self, *, name: str = "", polygon: Polygon = None):
+        self.events = self.Events()
+
+        self._name = name
+        self._polygon = polygon
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @name.setter
+    def name(self, val: str) -> None:
+        if self.name != val:
+            self._name = val
+            self.events.name.emit(val)
+
+    @property
+    def polygon(self) -> Polygon:
+        return self._polygon
+
+    @polygon.setter
+    def polygon(self, val: Polygon) -> None:
+        if self.polygon != val:
+            self._polygon = val
+            self.events.polygon.emit(val)
 
 
 @dataclass
@@ -121,7 +149,6 @@ class ChannelData(Serializable):
         return cls(range=range_, color=color)
 
 
-@dataclass
 class Image(Serializable):
     """
     An Image is a list of Pyramids, with an optional background Pyramid.
@@ -129,15 +156,63 @@ class Image(Serializable):
     the entire slide, often during a tissue detection step.
     """
 
-    relpath: Path
-    block_name: str = ""
-    panel_name: str = ""
-    pixels: Optional[PyramidGroup] = None
-    annotations: List[Annotation] = field(default_factory=list)
-    channels_data: List[ChannelData] = field(default_factory=list)
-
     images_dir = "images"
     log = logging.getLogger(__name__)
+
+    class Events:
+        def __init__(self):
+            self.block_name = EventEmitter()
+            self.panel_name = EventEmitter()
+
+    def __init__(
+        self,
+        relpath: Path,
+        *,
+        block_name: str = "",
+        panel_name: str = "",
+    ):
+        self.events = self.Events()
+
+        self._relpath = relpath
+        self._block_name = block_name
+        self._panel_name = panel_name
+
+        # self._annotations: Optional[EventedList[Annotation]] = None
+        # self._channels_data: Optional[EventedList[ChannelData]] = None
+
+        self._pixels = None
+
+    @property
+    def relpath(self) -> Path:
+        return self._relpath
+
+    @property
+    def block_name(self) -> str:
+        return self._block_name
+
+    @block_name.setter
+    def block_name(self, val: str) -> None:
+        if self.block_name != val:
+            self._block_name = val
+            self.events.block_name.emit(val)
+
+    @property
+    def panel_name(self) -> str:
+        return self._panel_name
+
+    @panel_name.setter
+    def panel_name(self, val: str) -> None:
+        if self.panel_name != val:
+            self._panel_name = val
+            self.events.panel_name.emit(val)
+
+    # @property
+    # def annotations(self) -> EventedList[Annotation]:
+    #     return self._annotations
+
+    # @property
+    # def channels_data(self) -> EventedList[ChannelData]:
+    #     return self._channels_data
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -156,24 +231,25 @@ class Image(Serializable):
         block_name = dct.get("block_name", "")
         panel_name = dct.get("panel_name", "")
 
-        channels_data = dct.get("channels_data", [])
+        # channels_data = dct.get("channels_data", [])
         return cls(
             relpath=relpath,
             block_name=block_name,
             panel_name=panel_name,
-            channels_data=channels_data,
+            # channels_data=channels_data,
         )
 
-    def move(self, basepath: Path, dst_relpath: Path) -> None:
+    def move(self, basepath: Path, dst_relpath: Path, clean: bool = False) -> None:
         im_src = basepath / Image.images_dir / self.relpath
         im_dst = basepath / Image.images_dir / dst_relpath
 
         im_dst.parent.mkdir(parents=True, exist_ok=True)
         im_src.rename(im_dst)
-        # if is_dir_empty(im_src.parent):
-        #     im_src.parent.rmdir()
+        if clean:
+            if is_dir_empty(im_src.parent):
+                im_src.parent.rmdir()
 
-        self.relpath = dst_relpath
+        self._relpath = dst_relpath
 
         # TODO: add annotation rename support
 
@@ -196,7 +272,7 @@ class Image(Serializable):
 
         annotations_dir = basepath / Annotation.annotations_dir / self.relpath.parent
         annotations_dir.mkdir(parents=True, exist_ok=True)
-        self.annotations = []  # TODO: load annotations here
+        # self.annotations = []  # TODO: load annotations here
 
 
 def parse_svs_metadata(s: str):
@@ -260,7 +336,7 @@ def get_svs_layers(path: Path, series: TiffPageSeries) -> List[da.Array]:
 
 
 def get_scn_pyramids(
-        path: Path, metadata: ET.Element, series: List[TiffPageSeries]
+    path: Path, metadata: ET.Element, series: List[TiffPageSeries]
 ) -> List[Pyramid]:
     """
     SCN files contain metadata in OME-XML format.

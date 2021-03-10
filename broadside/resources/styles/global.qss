@@ -7,8 +7,6 @@ QWidget {
 QMenuBar {
     font-size: 10pt;
     spacing: 0px;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
 }
 
 QMenuBar::item {

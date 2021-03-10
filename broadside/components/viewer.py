@@ -107,6 +107,10 @@ class Viewer:
     def update_editor(self) -> None:
         self.log.debug("Update editor requested")
 
+        if self.current_step is not None:
+            # allow gc to work its magic
+            self.current_step._view.setParent(None)
+
         index = self.navigator.model.index
         CurrentStep = self.steps[index]
         self.current_step = CurrentStep(model=self.model)
@@ -149,12 +153,6 @@ class Viewer:
             #
             # self.current_step._view.isBusyChanged.connect(onIsBusyChange)
             # onIsBusyChange()
-
-        # if data has changed in editor, let viewer know
-        # def set_stale():
-        #     self.model.is_stale = True
-        #
-        # self.current_step.dataChanged.connect(lambda: set_stale())
 
     def about_to_close(self, event: QCloseEvent) -> None:
         self.log.debug("About to close requested")
