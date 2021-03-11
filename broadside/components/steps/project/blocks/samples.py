@@ -22,7 +22,6 @@ from qtpy.QtWidgets import (
     QGroupBox,
 )
 
-from ....editor import Editor
 from ....utils import CellState, LineEditItemDelegate
 from .....models.block import Sample
 from .....utils.events import EventedList

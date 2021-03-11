@@ -12,7 +12,6 @@ from qtpy.QtWidgets import (
     QGridLayout,
     QScrollArea,
     QMessageBox,
-    QLineEdit,
     QPlainTextEdit,
     QGroupBox,
     QHBoxLayout,

@@ -131,7 +131,7 @@ class BlocksEditor(Editor):
 
     def add_block(self):
         n_blocks = len(self.model.state.blocks)
-        block = Block(name=f"New block {n_blocks+1}")
+        block = Block(name=f"New block {n_blocks + 1}")
         self.model.state.blocks.append(block)
         self._add_block_bindings(block)
 

@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from natsort import natsorted
-from qtpy.QtCore import Signal, Qt, QPointF, QSize, QRectF
+from qtpy.QtCore import Signal, Qt, QPointF, QSize
 from qtpy.QtGui import (
     QBrush,
     QPainter,

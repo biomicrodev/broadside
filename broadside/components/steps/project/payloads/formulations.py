@@ -15,7 +15,6 @@ from qtpy.QtWidgets import (
     QGroupBox,
 )
 
-from ....editor import Editor
 from ....utils import CellState, LineEditItemDelegate
 from .....models.payload import Formulation
 from .....utils.events import EventedAngle, EventedList

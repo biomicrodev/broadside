@@ -25,7 +25,6 @@ from qtpy.QtWidgets import (
     QGraphicsLineItem,
     QWidget,
     QGraphicsScene,
-    QLabel,
 )
 
 from .....models.block import Vector, Device

@@ -14,7 +14,6 @@ from qtpy.QtWidgets import (
     QGroupBox,
 )
 
-from ..project.block import BlockDiagramEditorView
 from ...viewer_model import ViewerModel
 from ....models.image import Image
 

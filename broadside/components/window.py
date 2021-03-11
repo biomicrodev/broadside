@@ -47,9 +47,9 @@ def show_about_dialog(parent: QWidget = None) -> None:
 class Window(QMainWindow):
     log = logging.getLogger(__name__)
 
-    about_to_close = Signal(QCloseEvent)
+    aboutToClose = Signal(QCloseEvent)
 
-    def __init__(self, *, nav_view: QWidget):
+    def __init__(self, *, navView: QWidget):
         super().__init__(parent=None)
 
         self.setFocusPolicy(Qt.StrongFocus)
@@ -58,11 +58,11 @@ class Window(QMainWindow):
         self.setMinimumHeight(500)
         self.resize(1200, 800)  # w, h
 
-        self.init_menu_bar()
-        self.init_bindings()
-        self.init_layout(navView=nav_view)
+        self.initMenuBar()
+        self.initBindings()
+        self.initLayout(navView=navView)
 
-    def init_menu_bar(self) -> None:
+    def initMenuBar(self) -> None:
         # set up actions
         open_action = QAction()
         open_action.setText("&Open")
@@ -102,16 +102,16 @@ class Window(QMainWindow):
         help_menu: QMenu = menuBar.addMenu("&Help")
         help_menu.addAction(about_action)
 
-    def init_bindings(self) -> None:
+    def initBindings(self) -> None:
         self.about_action.triggered.connect(lambda: show_about_dialog(self))
 
-    def init_layout(self, *, navView: QWidget) -> None:
-        editor_layout = QVBoxLayout()
-        editor_layout.setSpacing(0)
-        editor_layout.setContentsMargins(0, 0, 0, 0)
-        editor_layout.addWidget(QWidget(), stretch=0)
-        editor_layout.addWidget(QWidget(), stretch=1)
-        self.editor_layout = editor_layout
+    def initLayout(self, *, navView: QWidget) -> None:
+        editorLayout = QVBoxLayout()
+        editorLayout.setSpacing(0)
+        editorLayout.setContentsMargins(0, 0, 0, 0)
+        editorLayout.addWidget(QWidget(), stretch=0)
+        editorLayout.addWidget(QWidget(), stretch=1)
+        self.editorLayout = editorLayout
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -119,13 +119,13 @@ class Window(QMainWindow):
         layout.addWidget(QHLine())
         layout.addWidget(navView, stretch=0)
         layout.addWidget(QHLine())
-        layout.addLayout(self.editor_layout, stretch=1)
+        layout.addLayout(self.editorLayout, stretch=1)
 
-        central_widget = QWidget()
-        central_widget.setLayout(layout)
-        self.setCentralWidget(central_widget)
+        centralWidget = QWidget()
+        centralWidget.setLayout(layout)
+        self.setCentralWidget(centralWidget)
 
-    def set_theme(self, theme: str) -> None:
+    def setTheme(self, theme: str) -> None:
         """
         Since reading text files is slow, maybe cache them?
         """
@@ -145,9 +145,9 @@ class Window(QMainWindow):
         (`Viewer`).
         """
 
-        self.about_to_close.emit(event)
+        self.aboutToClose.emit(event)
 
-    def set_editor_view(self, widget: QWidget) -> None:
+    def setEditorView(self, widget: QWidget) -> None:
         """
         Whenever this runs, there is a brief flash of improperly aligned content where
         the navigator widget appears in the middle of the layout. To prevent this, we
@@ -158,15 +158,15 @@ class Window(QMainWindow):
         """
 
         # delete old widget ...
-        item: QLayoutItem = self.editor_layout.takeAt(1)
+        item: QLayoutItem = self.editorLayout.takeAt(1)
 
-        self.editor_layout.setStretch(0, 1)
+        self.editorLayout.setStretch(0, 1)
 
         if (item is not None) and (item.widget() is not None):
             oldWidget: QWidget = item.widget()
             oldWidget.deleteLater()
 
         # ... and set new widget
-        self.editor_layout.addWidget(widget)
+        self.editorLayout.addWidget(widget)
 
-        self.editor_layout.setStretch(0, 0)
+        self.editorLayout.setStretch(0, 0)

@@ -36,10 +36,10 @@ class Viewer:
         self.model = ViewerModel()
 
         # set up user interface
-        self._window = Window(nav_view=self.navigator._view)
+        self._window = Window(navView=self.navigator._view)
 
         # set up bindings
-        self.events.theme.connect(lambda theme: self._window.set_theme(theme))
+        self.events.theme.connect(lambda theme: self._window.setTheme(theme))
 
         self._theme = None
         self.theme = theme
@@ -81,7 +81,7 @@ class Viewer:
         self._window.open_action.triggered.connect(
             lambda _: self.on_path_change_requested()
         )
-        self._window.about_to_close.connect(lambda e: self.about_to_close(e))
+        self._window.aboutToClose.connect(lambda e: self.about_to_close(e))
         self._window.toggle_theme_action.triggered.connect(
             lambda _: self.toggle_theme()
         )
@@ -114,7 +114,7 @@ class Viewer:
         index = self.navigator.model.index
         CurrentStep = self.steps[index]
         self.current_step = CurrentStep(model=self.model)
-        self._window.set_editor_view(self.current_step._view)
+        self._window.setEditorView(self.current_step._view)
 
         # when editor is in a valid state, let navigator know
         def update_is_valid():
