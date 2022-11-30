@@ -1,0 +1,8 @@
+name: broadside-before-annotate-env
+channels:
+  - conda-forge
+dependencies:
+  - "python>=3.7,!=3.11.*"
+  - pip
+  - pip:
+      - /home/titanium/PycharmProjects/broadside[before-annotate]
