@@ -29,7 +29,7 @@ class Scene {
     List<String> roundNames
 
     Pattern roundPattern = ~/R.*/
-    Pattern tileFilenamePattern = ~/[0-9]+\.ome\.tiff/
+    Pattern tileFilenamePattern = ~/.*\.ome\.tiff/
     Path tilesPath = path.resolve('tiles')
 
     Scene(Path path, Set<String> selectedRoundNames = null) {
