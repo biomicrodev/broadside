@@ -107,10 +107,9 @@ process SORT_STACKS {
         first list as a key, but I can't be bothered to make it more complicated than it
         really is
         */
-        def sortMethod = { a, b -> a <=> b}
-        roundsSorted = rounds.sort(sortMethod)
-        tilesPathsSorted = tilesPaths.sort(sortMethod)
-        stackPathsSorted = stackPaths.sort(sortMethod)
+        roundsSorted = rounds.sort({ a, b -> a <=> b})
+        tilesPathsSorted = tilesPaths.sort({ a, b -> a.name <=> b.name})
+        stackPathsSorted = stackPaths.sort({ a, b -> a.name <=> b.name})
 }
 
 process COLLECT_STACKS_BY_SCENE {
